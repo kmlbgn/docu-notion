@@ -197,11 +197,12 @@ async function getPagesRecursively(
     pageInfo.hasParagraphs &&
     pageInfo.childPageIdsAndOrder.length
   ) {
-    error(
-      `Skipping "${pageInTheOutline.nameOrTitle}"  and its children. docu-notion does not support pages that are both levels and have content at the same time.`
-    );
-    ++counts.skipped_because_level_cannot_have_content;
-    return;
+    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" is both a level and contains content. This is not the standard behavior for docu-notion, but the page will still be processed.`);
+    // error(
+    //   `Skipping "${pageInTheOutline.nameOrTitle}"  and its children. docu-notion does not support pages that are both levels and have content at the same time.`
+    // );
+    // ++counts.skipped_because_level_cannot_have_content;
+    // return;
   }
   if (!rootLevel && pageInfo.hasParagraphs) {
     pages.push(pageInTheOutline);
