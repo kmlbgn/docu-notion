@@ -9,7 +9,6 @@ import { ListBlockChildrenResponseResults } from "notion-to-md/build/types";
 // create pages for each node of the outline and then add links from those to the database pages. In this way, we get the benefits of database
 // pages (metadata, workflow, etc) and also normal pages (order, position in the outline).
 export enum PageType {
-  CategoryIndex,
   DatabasePage,
   Simple,
 }
@@ -59,18 +58,12 @@ export class NotionPage {
     {
         "object": "page",
         "parent": {
-            ("isCategory": "true")
             "type": "page_id",
             or
             "type": "database_id",
             ...
         },
     */
-
-     // Check IsCategory flag under parent for level pages with index content
-    if (this.metadata.parent.IsCategory) {
-      return PageType.CategoryIndex;
-    }
     return (this.metadata as any).parent.type === "database_id"
       ? PageType.DatabasePage
       : PageType.Simple;
@@ -82,10 +75,7 @@ export class NotionPage {
   }
 
   public nameForFile(): string {
-    // In Notion, pages from the Database have names and simple pages have titles. We use "index" by default for Level page with content.
-    if (this.type === PageType.CategoryIndex) {
-      return "index";
-    }
+    // In Notion, pages from the Database have names and simple pages have titles.
     return this.type === PageType.Simple
       ? this.title
       : // if it's a Database page, then we'll use the slug unless there is none, then we'd rather have the
