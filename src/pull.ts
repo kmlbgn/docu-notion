@@ -239,7 +239,7 @@ async function getPagesRecursively(
     // it has both? Well then we assume it's a content page.
     if (pageInfo.linksPageIdsAndOrder?.length) {
       warning(
-        `Note: The page "${pageInTheOutline.nameOrTitle}" is in the outline, has content and also points at other pages but doesn't have childrens. It will be treated as a simple content page. This is no problem, unless you intended to have all your content pages in the database (kanban workflow) section.`
+        `Note: The page "${pageInTheOutline.nameOrTitle}" is in the outline, has content and also points at other pages but don't have childrens. It will be treated as a simple content page. This is no problem, unless you intended to have all your content pages in the database (kanban workflow) section.`
       );
     }
   }
