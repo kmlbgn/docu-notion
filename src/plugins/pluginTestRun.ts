@@ -65,7 +65,6 @@ export async function blocksToMarkdown(
       output_normally: 0,
       skipped_because_empty: 0,
       skipped_because_status: 0,
-      skipped_because_level_cannot_have_content: 0,
     },
     // enhance: this needs more thinking, how we want to do logging in tests
     // one thing is to avoid a situation where we break people's tests that

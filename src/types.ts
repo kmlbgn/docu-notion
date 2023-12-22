@@ -5,5 +5,4 @@ export type ICounts = {
   output_normally: number;
   skipped_because_empty: number;
   skipped_because_status: number;
-  skipped_because_level_cannot_have_content: number;
 };

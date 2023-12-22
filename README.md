@@ -1,22 +1,46 @@
 # Description
-KIRA's documentation system integrates with docu-notion-kira, a forked version of docu-notion tailored for Kira Network, which allows the use of Notion as the primary editing platform to produce content suitable for static site generators like Docusaurus. This unique combination meets several challenging requirements, such as workflow features, localization support via Crowdin, and capabilities for both online and offline distribution. Future plans include adding versioning capabilities.
+KIRA's documentation system integrates with docu-notion-kira, a forked version of [docu-notion](https://github.com/sillsdev/docu-notion) tailored for Kira Network. 
+
+Docu-notion allows the use of Notion as the primary editing platform to produce content suitable for static site generators; Docusaurus in this case. This combination meets several challenging requirements, such as automatique deployment, editing workflow features, localization support via Crowdin, and capabilities for both online and offline distribution. Future plans include adding versioning capabilities.
 
 # How It Works ?
 
-Docu-notion fetches content from a provided Notion page and produce a structured folder of markdown-base files. The notion page being fetched has two main components:
+Docu-notion fetches content from a provided Notion root page and produce a structured folder of markdown-base files of its content. The root page has two main components:
 
 1. **The Database (Optional)** - This is where the documentation pages are stored. They include content and are equipped with workflow properties to facilitate a Kanban-style management process where pages can have metadata that can be leveraged and are published according to their ‘status’.
 2. **The Outline Page (Mandatory)** - This is a central Notion page that organizes content hierarchically. It serves as the foundation of the documentation structure. The arrangement of sub-pages within the Outline is directly reflected in the final documentation site and its sidebar navigation. These sub-pages should link back to the relevant documents housed in the database.
 
 ### **Page Structure in the Outline**
 
-Each page listed under the Outline page is expected to be only one of the following type:
+Blocks listed under the Outline page can be of the following types:
 
-- sub-pages (a page containing others pages with content and/or sub-pages)
-- symbolic links to other pages of the database (if the database is utilized)
-- or standard page with content
+- A page level without Index : A page containing child pages or links to database pages, but doesn't have any content.
+- A page level with Index : A page containing child pages and/or links to database pages, and has content. An index.md will be created and all child pages and link to database page will be stripped out from it. 
+- A link to a database page
+- Or a standard page with content
     
-    The use of the database is optional because pages with content can be directly included in the Outline. However, these pages won't have access to the advanced workflow features provided by the database integration. Sub-pages function as subsections of the documentation. They are transformed into dropdown menus in the sidebar of the documentation site. Due to this structural role, sub-pages cannot hold content themselves (which won’t be displayed), they are only meant to organize the documentation and provide navigation to more detailed content contained in linked or nested pages.
+    The use of the database is optional because pages with content can be directly included in the Outline. However, these pages won't have access to the advanced workflow features provided by the database properties. A level page (a.k.a Category in Docusaurus) function as subsections of the documentation. They are transformed into dropdown menus in the sidebar of the documentation site. If they hold content it will be parsed into an index.md.
+
+### **Links**
+
+Docu-notion automatically identifies and removes blocks that are either child pages or links to pages located at the root level of the page. If you need to include such blocks within your content, they must be embedded within another block type, like a table or a column, or they should be accompanied by some text within the same block to trick this logic.
+
+# Custom parsing (Plugins)
+
+Custom parsing logic can be created using plugins. See the [plugin readme](src/plugins/README.md).
+
+# Callouts ➜ Admonitions
+
+To map Notion callouts to Docusaurus admonitions, ensure the icon is for the type you want.
+
+- ℹ️ ➜ note
+- 📝➜ note
+- 💡➜ tip
+- ❗➜ info
+- ⚠️➜ caution
+- 🔥➜ danger
+
+The default admonition type, if no matching icon is found, is "note".
 
 # Setup: Docu-notion-kira + docusaurus
 
@@ -133,19 +157,3 @@ Options:
 | -i, --img-output-path <string>        |           | Path to directory where images will be stored. If this is not included, images will be placed in the same directory as the document that uses them, which then allows for localization of screenshots.             |
 | -p, --img-prefix-in-markdown <string> |           | When referencing an image from markdown, prefix with this path instead of the full img-output-path. Should be used only in conjunction with --img-output-path.                                                     |
 | -h, --help                            |           | display help for command                                                                                                                                                                                           |
-# Custom parsing (Plugins)
-
-Custom parsing logic can be created using plugins. See the [plugin readme](src/plugins/README.md).
-
-# Callouts ➜ Admonitions
-
-To map Notion callouts to Docusaurus admonitions, ensure the icon is for the type you want.
-
-- ℹ️ ➜ note
-- 📝➜ note
-- 💡➜ tip
-- ❗➜ info
-- ⚠️➜ caution
-- 🔥➜ danger
-
-The default admonition type, if no matching icon is found, is "note".

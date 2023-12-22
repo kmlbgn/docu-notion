@@ -37,9 +37,9 @@ const dummyMarkdownModifier: IPlugin = {
 const config: IDocuNotionConfig = {
   plugins: [
     // here we're adding a plugin that needs a parameter for customization
-    dummyBlockModifier("foobar"),
+    // dummyBlockModifier("foobar"),
     // here's we're adding a plugin that doesn't take any customization
-    dummyMarkdownModifier,
+    // dummyMarkdownModifier,
   ],
 };
 

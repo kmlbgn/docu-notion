@@ -1,5 +1,5 @@
 import { IDocuNotionContext, IPlugin } from "./pluginTypes";
-import { error, warning } from "../log";
+import { error, warning, verbose } from "../log";
 import { NotionPage } from "../NotionPage";
 
 // converts a url to a local link, if it is a link to a page in the Notion site
@@ -10,7 +10,7 @@ export function convertInternalUrl(
   context: IDocuNotionContext,
   url: string
 ): string | undefined {
-  const kGetIDFromNotionURL = /https:\/\/www\.notion\.so\S+-([a-z,0-9]+)+.*/;
+  const kGetIDFromNotionURL = /https:\/\/www\.notion\.so\/([a-z0-9]+).*/;
   const match = kGetIDFromNotionURL.exec(url);
   if (match === null) {
     warning(
@@ -32,6 +32,9 @@ export function convertInternalUrl(
     );
     return undefined;
   }
+  // warning(
+  //   `[standardInternalLinkConversion] Found the target for ${id}, passing ${url}`
+  // );
   return convertLinkHref(context, targetPage, url);
 }
 
@@ -40,7 +43,7 @@ function convertInternalLink(
   context: IDocuNotionContext,
   markdownLink: string
 ): string {
-  const linkRegExp = /\[([^\]]+)?\]\(\/?([^),^/]+)\)/g;
+  const linkRegExp = /\[([^\]]+)?\]\((?!mailto:)(https:\/\/www\.notion\.so\/[^)]+|\/[^),]+)\)/g;
   const match = linkRegExp.exec(markdownLink);
   if (match === null) {
     warning(
@@ -50,11 +53,17 @@ function convertInternalLink(
   }
 
   const labelFromNotion = match[1] || "";
-  const hrefFromNotion = match[2];
+  let hrefFromNotion = match[2];
 
-  // verbose(
-  //   `[standardInternalLinkConversion] Converting ${markdownLink} with has url ${hrefFromNotion}`
-  // );
+  // Find the last occurrence of either '-' or '/' and take everything to the right to extract id and fragment
+  const lastSpecialCharIndex = Math.max(hrefFromNotion.lastIndexOf('-'), hrefFromNotion.lastIndexOf('/'));
+  if (lastSpecialCharIndex !== -1) {
+      hrefFromNotion = hrefFromNotion.substring(lastSpecialCharIndex + 1);
+  }
+
+  verbose(
+    `[standardInternalLinkConversion] Converting ${markdownLink} with has url ${hrefFromNotion}`
+  );
 
   const pages = context.pages;
   // find the page where pageId matches hrefFromNotion
@@ -65,7 +74,7 @@ function convertInternalLink(
   if (!targetPage) {
     // About this situation. See https://github.com/sillsdev/docu-notion/issues/9
     warning(
-      `[standardInternalLinkConversion] Could not find the target of this link. Note that links to outline sections are not supported. ${markdownLink}. https://github.com/sillsdev/docu-notion/issues/9`
+      `[standardInternalLinkConversion] Could not find the target for ${hrefFromNotion}. Note that links to outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
     );
     return "**[Problem Internal Link]**";
   }
@@ -78,9 +87,9 @@ function convertInternalLink(
 function convertLinkLabel(targetPage: NotionPage, text: string): string {
   // In Notion, if you just add a link to a page without linking it to any text, then in Notion
   // you see the name of the page as the text of the link. But when Notion gives us that same
-  // link, it uses "link_to_page" as the text. So we have to look up the name of the page in
+  // link, it uses "mention" as the text. So we have to look up the name of the page in
   // order to fix that.;
-  if (text !== "link_to_page") return text;
+  if (text !== "mention") return text;
   else return targetPage.nameOrTitle;
 }
 function convertLinkHref(
@@ -97,13 +106,16 @@ function convertLinkHref(
 
   // Include the fragment (# and after) if it exists
   const { fragmentId } = parseLinkId(url);
-  //verbose(`Parsed ${url} and got Fragment ID: ${fragmentId}`);
+ // Log only if fragmentId is not an empty string
+  if (fragmentId !== "") {
+    verbose(`Parsed ${url} and got Fragment ID: ${fragmentId}`);
+  }
   convertedLink += fragmentId;
 
   //verbose(`Converting Link ${url} --> ${convertedLink}`);
   return convertedLink;
 }
-// Parse the link ID to get the base (before the #) and the fragment (# and after).
+// Parse the link ID to replace the base page ID (before the #) with its slug if exists, and replace the fragment (# and after) if exists.
 export function parseLinkId(fullLinkId: string): {
   baseLinkId: string; // before the #
   fragmentId: string; // # and after
@@ -123,9 +135,9 @@ export const standardInternalLinkConversion: IPlugin = {
   linkModifier: {
     // from notion (or notion-md?) we get slightly different hrefs depending on whether the links is "inline"
     // (has some other text that's been turned into a link) or "raw".
-    // Raw links come in without a leading slash, e.g. [link_to_page](4a6de8c0-b90b-444b-8a7b-d534d6ec71a4)
+    // Raw links come in without a leading slash, e.g. [mention](4a6de8c0-b90b-444b-8a7b-d534d6ec71a4)
     // Inline links come in with a leading slash, e.g. [pointer to the introduction](/4a6de8c0b90b444b8a7bd534d6ec71a4)
-    match: /\[([^\]]+)?\]\((?!mailto:)(\/?[^),^/]+)\)/,
+    match: /\[([^\]]+)?\]\((?!mailto:)(https:\/\/www\.notion\.so\/[^)]+|\/[^),]+)\)/,
     convert: convertInternalLink,
   },
 };

@@ -41,14 +41,40 @@ export async function getMarkdownFromNotionBlocks(
   config: IDocuNotionConfig,
   blocks: Array<NotionBlock>
 ): Promise<string> {
+
+  // Level page index.md content filter : Keep the block if it is not a child page or only contains a mention (is a link to page)
+  // Note: this will filters EVERY page. We assume child_page and mention block to be used only for the purpose of creating a new page.
+  //       If you want to use links to other pages, you'll have to put a bit of text in the block.
+  const filteredBlocks = blocks.filter((block: any) => {
+    // Filter out 'child_page' type blocks
+    if (block.type === 'child_page') {
+      return false;
+    }
+  
+    // For paragraph blocks, check if they consist of a mention and an empty text node
+    if (block.type === 'paragraph' && block.paragraph.rich_text.length === 2) {
+      const [element1, element2] = block.paragraph.rich_text;
+  
+      // Check for one mention of type 'page' and one empty text node
+      const isPageMention = (element: any) => element.type === 'mention' && element.mention?.type === 'page';
+      const isEmptyTextNode = (element: any) => element.type === 'text' && element.text?.content.trim() === '';
+  
+      if ((isPageMention(element1) && isEmptyTextNode(element2)) || (isPageMention(element2) && isEmptyTextNode(element1))) {
+        // Filter out this block
+        return false;
+      }
+    }
+      return true;
+  });
+
   // changes to the blocks we get from notion API
-  doNotionBlockTransforms(blocks, config);
+  doNotionBlockTransforms(filteredBlocks, config);
 
   // overrides for the default notion-to-markdown conversions
   registerNotionToMarkdownCustomTransforms(config, context);
 
   // the main conversion to markdown, using the notion-to-md library
-  let markdown = await doNotionToMarkdown(context, blocks); // ?
+  let markdown = await doNotionToMarkdown(context, filteredBlocks); // ?
 
   // corrections to links after they are converted to markdown,
   // with access to all the pages we've seen
@@ -69,7 +95,7 @@ export async function getMarkdownFromNotionBlocks(
 }
 
 // operations on notion blocks before they are converted to markdown
-function doNotionBlockTransforms(
+export function doNotionBlockTransforms(
   blocks: Array<NotionBlock>,
   config: IDocuNotionConfig
 ) {
@@ -154,7 +180,7 @@ async function doTransformsOnMarkdown(
   return body;
 }
 
-async function doNotionToMarkdown(
+export async function doNotionToMarkdown(
   docunotionContext: IDocuNotionContext,
   blocks: Array<NotionBlock>
 ) {
@@ -182,7 +208,7 @@ async function doNotionToMarkdown(
 // corrections to links after they are converted to markdown
 // Note: from notion (or notion-md?) we get slightly different hrefs depending on whether the links is "inline"
 // (has some other text that's been turned into a link) or "raw".
-// Raw links come in without a leading slash, e.g. [link_to_page](4a6de8c0-b90b-444b-8a7b-d534d6ec71a4)
+// Raw links come in without a leading slash, e.g. [mention](4a6de8c0-b90b-444b-8a7b-d534d6ec71a4)
 // Inline links come in with a leading slash, e.g. [pointer to the introduction](/4a6de8c0b90b444b8a7bd534d6ec71a4)
 function doLinkFixes(
   context: IDocuNotionContext,

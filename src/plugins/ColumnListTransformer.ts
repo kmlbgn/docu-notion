@@ -2,26 +2,41 @@ import { NotionToMarkdown } from "notion-to-md";
 import { NotionBlock } from "../types";
 import { IPlugin } from "./pluginTypes";
 
-async function notionColumnListToMarkdown(
+async function notionColumnListToTabs(
   notionToMarkdown: NotionToMarkdown,
   getBlockChildren: (id: string) => Promise<NotionBlock[]>,
   block: NotionBlock
 ): Promise<string> {
-  // Enhance: The @notionhq/client, which uses the official API, cannot yet get at column formatting information (column_ratio)
-  // However https://github1s.com/NotionX/react-notion-x/blob/master/packages/react-notion-x/src/block.tsx#L528 can get it.
-  const { id, has_children } = block as any; // "any" because the notion api type system is complex with a union that don't know how to help TS to cope with
+  const { id, has_children } = block as any;
 
   if (!has_children) return "";
 
-  const column_list_children = await getBlockChildren(id);
+  const columnListChildren = await getBlockChildren(id);
 
-  const column_list_promise = column_list_children.map(
-    async column => await notionToMarkdown.blockToMarkdown(column)
-  );
+  const tabItemsPromises = columnListChildren.map(async (column) => {
+    const columnChildren = await getBlockChildren(column.id);
 
-  const columns: string[] = await Promise.all(column_list_promise);
+    let label = "Tab";
+    if (columnChildren.length > 0 && columnChildren[0].type === 'heading_1') {
+      const richTextItems = columnChildren[0].heading_1.rich_text;
+      
+      if (richTextItems.length > 0 && richTextItems[0].type === 'text') {
+        label = richTextItems[0].text.content; // Directly accessing the content of the first text item
+      }
+    }
 
-  return `<div class='notion-row'>\n${columns.join("\n\n")}\n</div>`;
+    const markdownContent = await Promise.all(
+      columnChildren.slice(1).map(
+        async child => await notionToMarkdown.blockToMarkdown(child)
+      )
+    );
+    const content = markdownContent.join("\n");
+
+    return `<TabItem value="${label.toLowerCase()}" label="${label}">\n${content}\n</TabItem>`;
+  });
+
+  const tabItems = await Promise.all(tabItemsPromises);
+  return `<Tabs>\n${tabItems.join("\n")}</Tabs>`;
 }
 
 export const standardColumnListTransformer: IPlugin = {
@@ -30,7 +45,7 @@ export const standardColumnListTransformer: IPlugin = {
     {
       type: "column_list",
       getStringFromBlock: (context, block) =>
-        notionColumnListToMarkdown(
+        notionColumnListToTabs(
           context.notionToMarkdown,
           context.getBlockChildren,
           block

@@ -254,7 +254,7 @@ export class NotionPage {
   ): Promise<{
     childPageIdsAndOrder: { id: string; order: number }[];
     linksPageIdsAndOrder: { id: string; order: number }[];
-    hasParagraphs: boolean;
+    hasContent: boolean;
   }> {
     for (let i = 0; i < children.length; i++) {
       (children[i] as any).order = i;
@@ -263,14 +263,28 @@ export class NotionPage {
       childPageIdsAndOrder: children
         .filter((b: any) => b.type === "child_page")
         .map((b: any) => ({ id: b.id, order: b.order })),
+
+      // sometimes we leave empty spaces when adding a raw link which can break detection. This test account for this case.
       linksPageIdsAndOrder: children
-        .filter((b: any) => b.type === "link_to_page")
-        .map((b: any) => ({ id: b.link_to_page.page_id, order: b.order })),
-      hasParagraphs: children.some(
-        b =>
-          (b as any).type === "paragraph" &&
-          (b as any).paragraph.rich_text.length > 0
-      ),
+        .filter((b: any) =>
+          b.type === "paragraph" && 
+          b.paragraph.rich_text.filter((rt: any) => rt.type === "mention").length === 1 &&
+          (b.paragraph.rich_text.length === 1 || b.paragraph.rich_text.every((rt: any) => rt.type === "mention" || (rt.type === "text" && /^\s*$/.test(rt.plain_text))))
+        )
+        .map((b: any) => ({ id: b.paragraph.rich_text.find((rt: any) => rt.type === "mention").mention.page.id, order: b.order })),
+      /**
+       * hasContent checks if there's meaningful content among the blocks.
+       * `hasContent` is true if there's at least one block that is not a "child_page"
+       * and not a "paragraph" with only a single "mention" or whitespace text nodes.
+       */
+      hasContent: children.some(
+        (b: any) => 
+          b.type !== "child_page" &&
+          !(b.type === "paragraph" && 
+            (b.paragraph.rich_text.length === 0 || 
+            (b.paragraph.rich_text.filter((rt: any) => rt.type === "mention" || (rt.type === "text" && /^\s*$/.test(rt.plain_text))).length === b.paragraph.rich_text.length))
+          )
+      ),        
     };
   }
 }

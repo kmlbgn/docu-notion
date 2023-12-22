@@ -1,5 +1,4 @@
 import * as fs from "fs-extra";
-
 import { NotionToMarkdown } from "notion-to-md";
 import { HierarchicalNamedLayoutStrategy } from "./HierarchicalNamedLayoutStrategy";
 import { LayoutStrategy } from "./LayoutStrategy";
@@ -48,7 +47,6 @@ const counts = {
   output_normally: 0,
   skipped_because_empty: 0,
   skipped_because_status: 0,
-  skipped_because_level_cannot_have_content: 0,
 };
 
 export async function notionPull(options: DocuNotionOptions): Promise<void> {
@@ -191,18 +189,16 @@ async function getPagesRecursively(
 
   const r = await getBlockChildren(pageInTheOutline.pageId);
   const pageInfo = await pageInTheOutline.getContentInfo(r);
+  verbose(`Childs:${pageInfo.childPageIdsAndOrder.length}`);
+  verbose(`Links:${pageInfo.linksPageIdsAndOrder.length}`);
+  verbose(`hasContent:${pageInfo.hasContent}`);
 
   if (
     !rootLevel &&
-    pageInfo.hasParagraphs &&
-    pageInfo.childPageIdsAndOrder.length
-  ) {
+    pageInfo.hasContent &&
+    (pageInfo.childPageIdsAndOrder.length > 0 || pageInfo.linksPageIdsAndOrder.length > 0)
+  ){
     warning(`Note: The page "${pageInTheOutline.nameOrTitle}" contains both childrens and content so it should produce a level with an index page`);
-    // error(
-    //   `Skipping "${pageInTheOutline.nameOrTitle}"  and its children. docu-notion does not support pages that are both levels and have content at the same time.`
-    // );
-    // ++counts.skipped_because_level_cannot_have_content;
-    // return;
 
     // set IsCategory flag
     (pageInTheOutline.metadata as any).parent.IsCategory = true;
@@ -214,11 +210,12 @@ async function getPagesRecursively(
       incomingContext,
       pageInTheOutline.nameOrTitle
     );
-  
-    // Push the current page into the pages array
+
+    // Forward level for index.md and push it into the pages array
+    pageInTheOutline.layoutContext = layoutContext;
     pages.push(pageInTheOutline);
 
-    // Recursively process each child page
+    // Recursively process each child page and page link
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
       await getPagesRecursively(
         options,
@@ -228,26 +225,30 @@ async function getPagesRecursively(
         false
       );
     }
-  }
-
-  if (!rootLevel && pageInfo.hasParagraphs) {
-    pages.push(pageInTheOutline);
-
-    // The best practice is to keep content pages in the "database" (e.g. kanban board), but we do allow people to make pages in the outline directly.
-    // So how can we tell the difference between a page that is supposed to be content and one that is meant to form the sidebar? If it
-    // has only links, then it's a page for forming the sidebar. If it has contents and no links, then it's a content page. But what if
-    // it has both? Well then we assume it's a content page.
-    if (pageInfo.linksPageIdsAndOrder?.length) {
-      warning(
-        `Note: The page "${pageInTheOutline.nameOrTitle}" is in the outline, has content and also points at other pages but doesn't have childrens. It will be treated as a simple content page. This is no problem, unless you intended to have all your content pages in the database (kanban workflow) section.`
+    for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
+      pages.push(
+        await fromPageId(
+          layoutContext,
+          linkPageInfo.id,
+          linkPageInfo.order,
+          false
+        )
       );
     }
   }
+
+  // Simple content page are being pushed
+  else if (!rootLevel && pageInfo.hasContent) {
+    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" is a simple content page.`);
+    pages.push(pageInTheOutline);
+  }
+
   // a normal outline page that exists just to create the level, pointing at database pages that belong in this level
   else if (
     pageInfo.childPageIdsAndOrder.length ||
     pageInfo.linksPageIdsAndOrder.length
   ) {
+    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" only has child pages or links to page; it's a level without index.`);
     let layoutContext = incomingContext;
     // don't make a level for "Outline" page at the root
     if (!rootLevel && pageInTheOutline.nameOrTitle !== "Outline") {

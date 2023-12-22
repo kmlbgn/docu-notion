@@ -253,6 +253,7 @@ test("raw link to an existing page on this site that has a slug", async () => {
       last_edited_time: "2023-06-14T20:09:00.000Z",
       has_children: false,
       archived: false,
+      // TODO: mention has replaced link_to_page
       type: "link_to_page",
       link_to_page: {
         type: "page_id",
