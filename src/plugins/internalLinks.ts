@@ -3,7 +3,7 @@ import { error, warning, verbose } from "../log";
 import { NotionPage } from "../NotionPage";
 
 // converts a url to a local link, if it is a link to a page in the Notion site
-// only here for plugins, notion won't normally be giving us raw urls (at least not that I've noticed)
+// only here for plugins, notion won't normally be giving us raw urls.
 // If it finds a URL but can't find the page it points to, it will return undefined.
 // If it doesn't find a match at all, it returns undefined.
 export function convertInternalUrl(
@@ -55,6 +55,15 @@ function convertInternalLink(
   const labelFromNotion = match[1] || "";
   let hrefFromNotion = match[2];
 
+
+    // TODO: This is a hotfix to dodge internal image links parsing
+    const imageFileExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg'];
+    const isImageLink = imageFileExtensions.some(ext => hrefFromNotion.endsWith(ext));
+    if (isImageLink) {
+      verbose(`Link parsing: [InternalLinkPlugin] ${hrefFromNotion} is an internal image link and will be skipped. Make sure it exists !`);
+      return markdownLink;
+    }
+
   // Find the last occurrence of either '-' or '/' and take everything to the right to extract id and fragment
   const lastSpecialCharIndex = Math.max(hrefFromNotion.lastIndexOf('-'), hrefFromNotion.lastIndexOf('/'));
   if (lastSpecialCharIndex !== -1) {
@@ -70,7 +79,7 @@ function convertInternalLink(
   if (!targetPage) {
     // About this situation. See https://github.com/sillsdev/docu-notion/issues/9
     warning(
-      `Link parsing: [InternalLinkPlugin] Could not find the target for ${hrefFromNotion}. Note that links to outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
+      `Link parsing: [InternalLinkPlugin] Could not find a local target for ${hrefFromNotion}. Note that links to other notions pages or outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
     );
     return "**[Problem Internal Link]**";
   }
