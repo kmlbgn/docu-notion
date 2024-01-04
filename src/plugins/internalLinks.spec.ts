@@ -242,24 +242,61 @@ test("raw link to an existing page on this site that has a slug", async () => {
   });
 
   const results = await getMarkdown(
-    {
-      object: "block",
-      id: "2051d790-e527-4b4e-b145-ec0beee2addf",
-      parent: {
-        type: "page_id",
-        page_id: "333",
-      },
-      created_time: "2023-06-14T20:09:00.000Z",
-      last_edited_time: "2023-06-14T20:09:00.000Z",
-      has_children: false,
-      archived: false,
-      // TODO: mention has replaced link_to_page
-      type: "link_to_page",
-      link_to_page: {
-        type: "page_id",
-        page_id: targetPageId,
-      },
+{
+    "object": "block",
+    "id": "2051d790-e527-4b4e-b145-ec0beee2addf",
+    "parent": {
+        "type": "page_id",
+        "page_id": "333"
     },
+    "created_time": "2023-06-14T20:09:00.000Z",
+    "last_edited_time": "2023-06-14T20:09:00.000Z",
+    "has_children": false,
+    "archived": false,
+    "type": "paragraph",
+    "paragraph": {
+        "rich_text": [
+            {
+                "type": "mention",
+                "mention": {
+                    "type": "page",
+                    "page": {
+                        "id": targetPageId
+                    }
+                },
+                "annotations": {
+                    "bold": false,
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                    "code": false,
+                    "color": "default"
+                },
+                "plain_text": "Link text",
+                "href": "https://www.notion.so/123"
+            },
+            {
+                "type": "text",
+                "text": {
+                    "content": " ",
+                    "link": null
+                },
+                "annotations": {
+                    "bold": false,
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                    "code": false,
+                    "color": "default"
+                },
+                "plain_text": " ",
+                "href": null
+            }
+        ],
+        "color": "default"
+    }
+}
+,
     targetPage
   );
   expect(results.trim()).toBe("[Point to Me](/point-to-me)");

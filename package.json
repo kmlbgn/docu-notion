@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "sync": "rsync -av --delete docs/ ../docs.kira.network/docs/",
     "test": "vitest",
     "build": "npm run test -- --run && tsc && cp ./src/css/*.css dist/ && echo Build successful",
     "build-only": "tsc && cp ./src/css/*.css dist/",
@@ -11,6 +12,8 @@
     "// typescript check": "",
     "tsc": "tsc",
     "// test out with a private sample notion db": "",
+    "pull": "npm run ts -- -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE  --log-level verbose",
+    "pulldoc": "npm run ts -- -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE_DOC  --log-level verbose -y",
     "large-site-test": "npm run ts -- -n $SIL_BLOOM_DOCS_NOTION_TOKEN -r $SIL_BLOOM_DOCS_NOTION_ROOT_PAGE  --locales en,fr   --log-level debug",
     "pull-test-tagged": "npm run ts -- -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_TEST_ROOT_PAGE_ID  --log-level debug --status-tag test",
     "pull-test-css": "npm run ts -- --css-output-directory ./test/css -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_TEST_ROOT_PAGE_ID  --log-level debug --status-tag test",

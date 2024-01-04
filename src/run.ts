@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import { Option, program } from "commander";
-import { setLogLevel } from "./log";
+import { setLogLevel, warning } from "./log";
 
 import { notionPull } from "./pull";
 import path from "path";
@@ -42,6 +42,10 @@ export async function run(): Promise<void> {
       parseLocales,
       []
     )
+    .option("-y, --yes", 
+    "Automatically overwrite existing files without prompting"
+    )
+
     .addOption(
       new Option("-l, --log-level <level>", "Log level").choices([
         "info",
@@ -61,7 +65,10 @@ export async function run(): Promise<void> {
   program.showHelpAfterError();
   program.parse();
   setLogLevel(program.opts().logLevel);
-  console.log(JSON.stringify(program.opts()));
+  
+  const options = program.opts();
+  const safeOptions = { ...options, notionToken: 'REDACTED' }; // Don't console log notion token for safety
+  console.log(JSON.stringify(safeOptions)); 
 
   // copy in the this version of the css needed to make columns (and maybe other things?) work
   let pathToCss = "";
@@ -80,11 +87,65 @@ export async function run(): Promise<void> {
     path.join(program.opts().cssOutputDirectory, "docu-notion-styles.css")
   );
 
-  // pull and convert
-  await notionPull(program.opts()).then(() =>
-    console.log("docu-notion Finished.")
-  );
+  async function moveTmpContents() {
+    const destTmpPath = "src/pages";
+    const srcTmpPath = path.join(options.markdownOutputPath.replace(/\/+$/, "")+ '/tmp');
+    warning(`dest:${destTmpPath}`)
+    warning(`src:${srcTmpPath}`)
+    fs.ensureDirSync(destTmpPath);
+  
+    const tmpFiles = fs.readdirSync(srcTmpPath);
+    for (const file of tmpFiles) {
+      const destFilePath = path.join(destTmpPath, file);
+      const srcFilePath = path.join(srcTmpPath, file);
+  
+      if (fs.existsSync(destFilePath)) {
+        // Prompt user for overwriting
+        const overwrite = await promptUserForOverwrite(file, options.yes); 
+        if (!overwrite) {
+        console.log(`Skipping overwrite of '${file}'`);
+        continue;
+        } else {
+          console.log(`Overwriting '${file}'`);
+        }
+      }
+  
+      fs.moveSync(srcFilePath, destFilePath, { overwrite: true });
+    }
+    // After moving all files, delete the tmp folder
+    fs.removeSync(srcTmpPath);
+  }
+
+  // pull and move custom pages
+  await notionPull(program.opts());
+  await moveTmpContents();
+  console.log("Pull from Notion successful. Custom pages were moved to src/pages.");
+
 }
+
 function parseLocales(value: string): string[] {
   return value.split(",").map(l => l.trim().toLowerCase());
+}
+
+// user prompt when custom pages already exists
+const readline = require('readline');
+
+function promptUserForOverwrite(fileName: string, autoYes: Option) {
+  // Check if the --y flag is set in the options
+  if (autoYes) {
+    return Promise.resolve(true);
+  }
+
+  // If the --y flag is not set, continue with the user prompt
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    rl.question(`The file '${fileName}' already exists in 'src/test'. Do you want to overwrite it? (y/any) `, (answer: string) => {
+      resolve(answer.toLowerCase() === 'y');
+      rl.close();
+    });
+  });
 }

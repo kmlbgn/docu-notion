@@ -25,6 +25,13 @@ Blocks listed under the Outline page can be of the following types:
 
 Docu-notion automatically identifies and removes blocks that are either child pages or links to pages located at the root level of the page. If you need to include such blocks within your content, they must be embedded within another block type, like a table or a column, or they should be accompanied by some text within the same block to trick this logic.
 
+# **Custom Pages**
+
+Docusaurus automatically generates custom pages from the `src/pages` directory, creating corresponding slugs and links. Pages located at the root but outside the 'Outline' are treated as custom pages, converted to markdown, and moved to `src/pages`. This setup supports both standard pages and links to database pages.
+
+**Note on Conflicts**: If the 'Outline' contains content, an `index.md` is generated. However, if there's also an `index.js` in `src/pages`, Docusaurus prioritizes the last processed page. Testing indicates that `src/pages` takes precedence over pages in the `docs` folder, therefore `index.md` will not be taken into account.
+
+
 # Custom parsing (Plugins)
 
 Custom parsing logic can be created using plugins. See the [plugin readme](src/plugins/README.md).

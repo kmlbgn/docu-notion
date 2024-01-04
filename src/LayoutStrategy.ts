@@ -39,7 +39,7 @@ export abstract class LayoutStrategy {
   }
 
   public pageWasSeen(page: NotionPage): void {
-    const path = this.getPathForPage(page, ".md");
+    const path = this.getPathForPage(page, ".mdx");
     this.existingPagesNotSeenYetInPull =
       this.existingPagesNotSeenYetInPull.filter(p => p !== path);
   }
@@ -50,7 +50,7 @@ export abstract class LayoutStrategy {
       if (fs.statSync(path).isDirectory()) {
         return this.getListOfExistingFiles(path);
       }
-      if (path.endsWith(".md")) {
+      if (path.endsWith(".mdx")) {
         // we could just notice all files, and maybe that's better. But then we lose an debugging files like .json of the raw notion, on the second run.
         return [path];
       } else return [];

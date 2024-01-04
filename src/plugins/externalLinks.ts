@@ -2,7 +2,7 @@ import { IDocuNotionContext, IPlugin } from "./pluginTypes";
 import { error, warning } from "../log";
 
 export const standardExternalLinkConversion: IPlugin = {
-  name: "standard external link conversion",
+  name: "ExternalLinkPlugin",
   linkModifier: {
     match: /\[.*\]\(http.*\)/,
     convert: (context: IDocuNotionContext, markdownLink: string) => {
@@ -10,7 +10,7 @@ export const standardExternalLinkConversion: IPlugin = {
       const match = linkRegExp.exec(markdownLink);
       if (match === null) {
         error(
-          `[standardExternalLinkConversion] Could not parse link ${markdownLink}`
+          `Link parsing: [ExternalLinkPlugin] Could not parse link ${markdownLink}`
         );
         return markdownLink;
       }
@@ -19,7 +19,7 @@ export const standardExternalLinkConversion: IPlugin = {
       if (label === "bookmark") {
         const replacement = `[${url}](${url})`;
         warning(
-          `[standardExternalLinkConversion] Found Notion "Bookmark" link. In Notion this would show as an embed. The best docu-notion can do at the moment is replace "Bookmark" with the actual URL: ${replacement}`
+          `Link parsing: [ExternalLinkPlugin] Found Notion "Bookmark" link. In Notion this would show as an embed. The best docu-notion can do at the moment is replace "Bookmark" with the actual URL: ${replacement}`
         );
         return replacement;
       }

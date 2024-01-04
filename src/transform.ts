@@ -44,14 +44,14 @@ export async function getMarkdownFromNotionBlocks(
 
   // Level page index.md content filter : Keep the block if it is not a child page or only contains a mention (is a link to page)
   // Note: this will filters EVERY page. We assume child_page and mention block to be used only for the purpose of creating a new page.
-  //       If you want to use links to other pages, you'll have to put a bit of text in the block.
+  // If you want to use links to other pages, you'll have to put a bit of text in the block.
   const filteredBlocks = blocks.filter((block: any) => {
     // Filter out 'child_page' type blocks
     if (block.type === 'child_page') {
       return false;
     }
   
-    // For paragraph blocks, check if they consist of a mention and an empty text node
+    // Filter out link to page blocks : check if they consist of a mention and an empty text node
     if (block.type === 'paragraph' && block.paragraph.rich_text.length === 2) {
       const [element1, element2] = block.paragraph.rich_text;
   
@@ -215,9 +215,9 @@ function doLinkFixes(
   markdown: string,
   config: IDocuNotionConfig
 ): string {
-  const linkRegExp = /\[.*\]\([^\)]*\)/g;
+  const linkRegExp = /\[.*?\]\([^\)]*\)/g;
 
-  logDebug("markdown before link fixes", markdown);
+  logDebug("Markdown before link fix: ", markdown);
   let match: RegExpExecArray | null;
 
   // since we're going to make changes to the markdown,
@@ -230,7 +230,7 @@ function doLinkFixes(
     const originalLinkMarkdown = match[0];
 
     verbose(
-      `Checking to see if a plugin wants to modify "${originalLinkMarkdown}" `
+      `Link parsing: Checking "${originalLinkMarkdown}"`
     );
 
     // We only use the first plugin that matches and makes a change to the link.
@@ -239,7 +239,7 @@ function doLinkFixes(
     config.plugins.some(plugin => {
       if (!plugin.linkModifier) return false;
       if (plugin.linkModifier.match.exec(originalLinkMarkdown) === null) {
-        verbose(`plugin "${plugin.name}" did not match this url`);
+        verbose(`Link parsing: [${plugin.name}] Did not match this url`);
         return false;
       }
       const newMarkdown = plugin.linkModifier.convert(
@@ -250,11 +250,11 @@ function doLinkFixes(
       if (newMarkdown !== originalLinkMarkdown) {
         markdown = markdown.replace(originalLinkMarkdown, newMarkdown);
         verbose(
-          `plugin "${plugin.name}" transformed link: ${originalLinkMarkdown}-->${newMarkdown}`
+          `Link parsing: [${plugin.name}] Converted "${originalLinkMarkdown}" to "${newMarkdown}"`
         );
         return true; // the first plugin that matches and does something wins
       } else {
-        verbose(`plugin "${plugin.name}" did not change this url`);
+        verbose(`Link parsing: [${plugin.name}] URL unchanged`);
         return false;
       }
     });
@@ -296,7 +296,10 @@ function getFrontMatter(page: NotionPage): string {
   frontmatter += `sidebar_position: ${page.order}\n`;
   frontmatter += `slug: ${page.slug ?? ""}\n`;
   if (page.keywords) frontmatter += `keywords: [${page.keywords}]\n`;
+  frontmatter += "---\n\n";
 
-  frontmatter += "---\n";
+  // TODO/enhance: display this only when needed
+  frontmatter += "import Tabs from '@theme/Tabs';\n";
+  frontmatter += "import TabItem from '@theme/TabItem';\n";
   return frontmatter;
 }

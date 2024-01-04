@@ -40,10 +40,11 @@ export const standardHeadingTransformer: IPlugin = {
   // recursively calling this code, with blockToMarkdown using the custom transformer
   // over and over. Instead, we want blockToMarkdown to give us the normal
   // result, to which we will append the block ID to enable heading links.
+  // Also we increment heading number by one because Docusaurus does not display heading_1 as it is considered reserved for the page title.
+  // If we do not do so, we loose 1 out of 3 existing heading types in Notion... sad. 
   notionBlockModifications: [
     {
       modify: (block: NotionBlock) => {
-        // "as any" needed because we're putting a value in that is not allowed by the real type
         (block as any).type = block.type.replace("heading", "DN_heading");
       },
     },

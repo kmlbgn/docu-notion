@@ -71,14 +71,18 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
 
   layoutStrategy = new HierarchicalNamedLayoutStrategy();
 
+  // Create output folder
   await fs.mkdir(options.markdownOutputPath, { recursive: true });
   layoutStrategy.setRootDirectoryForMarkdown(
     options.markdownOutputPath.replace(/\/+$/, "") // trim any trailing slash
   );
 
+  // Create a 'tmp' folder for custom pages
+  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, "") + '/tmp', { recursive: true });
+
   info("Connecting to Notion...");
 
-  // Do a  quick test to see if we can connect to the root so that we can give a better error than just a generic "could not find page" one.
+  // Do a quick test to see if we can connect to the root so that we can give a better error than just a generic "could not find page" one.
   try {
     await executeWithRateLimitAndRetries("retrieving root page", async () => {
       await notionClient.pages.retrieve({ page_id: options.rootPage });
@@ -99,7 +103,7 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
   group(
     "Stage 1: walk children of the page named 'Outline', looking for pages..."
   );
-  await getPagesRecursively(options, "", options.rootPage, 0, true);
+  await getPagesRecursively(options, "", options.rootPage, options.rootPage, 0, true);
   logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
   info(`Found ${pages.length} pages`);
   endGroup();
@@ -134,7 +138,7 @@ async function outputPages(
   };
   for (const page of pages) {
     layoutStrategy.pageWasSeen(page);
-    const mdPath = layoutStrategy.getPathForPage(page, ".md");
+    const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
 
     // most plugins should not write to disk, but those handling image files need these paths
     context.directoryContainingMarkdown = Path.dirname(mdPath);
@@ -172,54 +176,112 @@ async function outputPages(
 async function getPagesRecursively(
   options: DocuNotionOptions,
   incomingContext: string,
-  pageIdOfThisParent: string,
-  orderOfThisParent: number,
+  parentId: string,
+  pageId: string,
+  pageOrder: number,
   rootLevel: boolean
 ) {
-  const pageInTheOutline = await fromPageId(
+  const currentPage = await fromPageId(
+    options,
     incomingContext,
-    pageIdOfThisParent,
-    orderOfThisParent,
-    true
+    parentId,
+    pageId,
+    pageOrder,
+    true,
+    false
   );
 
   info(
-    `Looking for children and links from ${incomingContext}/${pageInTheOutline.nameOrTitle}`
+    `Looking for children and links from ${incomingContext}/${currentPage.nameOrTitle}`
   );
 
-  const r = await getBlockChildren(pageInTheOutline.pageId);
-  const pageInfo = await pageInTheOutline.getContentInfo(r);
-  verbose(`Childs:${pageInfo.childPageIdsAndOrder.length}`);
-  verbose(`Links:${pageInfo.linksPageIdsAndOrder.length}`);
-  verbose(`hasContent:${pageInfo.hasContent}`);
+  const r = await getBlockChildren(currentPage.pageId);
+  const pageInfo = await currentPage.getContentInfo(r);
 
+  // TODO: delete
+  // verbose(`RootLevel:${rootLevel}`);
+  // verbose(`ParentID:${parentId}`);
+  // verbose(`PageID:${pageId}`);
+  // verbose(`Childs:${pageInfo.childPageIdsAndOrder.length}`);
+  // verbose(`Links:${pageInfo.linksPageIdsAndOrder.length}`);
+  // verbose(`hasContent:${pageInfo.hasContent}`);
+
+  // case: root page
   if (
+    currentPage.pageId == parentId
+  ){
+    warning(`Scan: Root page is "${currentPage.nameOrTitle}". Scanning...`);
+    let layoutContext = incomingContext; 
+
+    // Recursively process each child page...
+    for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
+      await getPagesRecursively(
+        options,
+        layoutContext,
+        currentPage.pageId,
+        childPageInfo.id,
+        childPageInfo.order,
+        false
+      );
+    }
+    // ... and links to page.
+    for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
+      pages.push(
+        await fromPageId(
+          options,
+          layoutContext,
+          currentPage.pageId,
+          linkPageInfo.id,
+          linkPageInfo.order,
+          false,
+          true
+        )
+      );
+    }
+  }
+
+  // case: custom page contained in the root page to be moved into Docusaurus src/pages folder, except the Outline.
+  else if (
+    currentPage.nameOrTitle != "Outline" &&
+    currentPage.parentId == options.rootPage &&
+    currentPage.pageId != options.rootPage
+    // pageInfo.hasContent
+  ){
+    warning(`Scan: Page "${currentPage.nameOrTitle}" is outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
+    // Set subtype flag
+    (currentPage.metadata as any).parent.subtype = "custom";
+    pages.push(currentPage);
+  }
+
+  // case: Category page with an index 
+  else if (
     !rootLevel &&
     pageInfo.hasContent &&
     (pageInfo.childPageIdsAndOrder.length > 0 || pageInfo.linksPageIdsAndOrder.length > 0)
   ){
-    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" contains both childrens and content so it should produce a level with an index page`);
+    warning(`Scan: Page "${currentPage.nameOrTitle}" contains both childrens and content so it should produce a level with an index page.`);
 
-    // set IsCategory flag
-    (pageInTheOutline.metadata as any).parent.IsCategory = true;
+    // Set subtype flag
+    (currentPage.metadata as any).parent.subtype = "categoryindex";
     
     // Add a new level for this page
     let layoutContext = layoutStrategy.newLevel(
       options.markdownOutputPath,
-      pageInTheOutline.order,
+      currentPage.order,
       incomingContext,
-      pageInTheOutline.nameOrTitle
+      currentPage.nameOrTitle
     );
 
     // Forward level for index.md and push it into the pages array
-    pageInTheOutline.layoutContext = layoutContext;
-    pages.push(pageInTheOutline);
+    currentPage.layoutContext = layoutContext;
+    pages.push(currentPage);
 
     // Recursively process each child page and page link
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
       await getPagesRecursively(
         options,
         layoutContext,
+        currentPage.pageId,
         childPageInfo.id,
         childPageInfo.order,
         false
@@ -228,41 +290,44 @@ async function getPagesRecursively(
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
       pages.push(
         await fromPageId(
+          options,
           layoutContext,
+          currentPage.pageId,
           linkPageInfo.id,
           linkPageInfo.order,
-          false
+          false,
+          true
         )
       );
     }
   }
-
-  // Simple content page are being pushed
+  // case: a simple content page
   else if (!rootLevel && pageInfo.hasContent) {
-    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" is a simple content page.`);
-    pages.push(pageInTheOutline);
+    warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
+    pages.push(currentPage);
   }
 
-  // a normal outline page that exists just to create the level, pointing at database pages that belong in this level
+  // case: A category page without index that exists just to create the level in the sidebar
   else if (
     pageInfo.childPageIdsAndOrder.length ||
     pageInfo.linksPageIdsAndOrder.length
   ) {
-    warning(`Note: The page "${pageInTheOutline.nameOrTitle}" only has child pages or links to page; it's a level without index.`);
+    warning(`Scan: Page "${currentPage.nameOrTitle}" only has child pages or links to page; it's a level without index.`);
     let layoutContext = incomingContext;
     // don't make a level for "Outline" page at the root
-    if (!rootLevel && pageInTheOutline.nameOrTitle !== "Outline") {
+    if (!rootLevel && currentPage.nameOrTitle !== "Outline") {
       layoutContext = layoutStrategy.newLevel(
         options.markdownOutputPath,
-        pageInTheOutline.order,
+        currentPage.order,
         incomingContext,
-        pageInTheOutline.nameOrTitle
+        currentPage.nameOrTitle
       );
     }
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
       await getPagesRecursively(
         options,
         layoutContext,
+        currentPage.pageId,
         childPageInfo.id,
         childPageInfo.order,
         false
@@ -272,17 +337,23 @@ async function getPagesRecursively(
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
       pages.push(
         await fromPageId(
+          options,
           layoutContext,
+          currentPage.pageId,
           linkPageInfo.id,
           linkPageInfo.order,
-          false
+          false,
+          true
         )
       );
     }
-  } else {
+  } 
+  
+  // case: empty pages and undefined ones
+  else {
     console.info(
       warning(
-        `Warning: The page "${pageInTheOutline.nameOrTitle}" is in the outline but appears to not have content, links to other pages, or child pages. It will be skipped.`
+        `Warning: The page "${currentPage.nameOrTitle}" is in the outline but appears to not have content, links to other pages, or child pages. It will be skipped.`
       )
     );
     ++counts.skipped_because_empty;
@@ -290,7 +361,7 @@ async function getPagesRecursively(
 }
 
 function writePage(page: NotionPage, finalMarkdown: string) {
-  const mdPath = layoutStrategy.getPathForPage(page, ".md");
+  const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
   verbose(`writing ${mdPath}`);
   fs.writeFileSync(mdPath, finalMarkdown, {});
   ++counts.output_normally;
@@ -403,21 +474,38 @@ export function initNotionClient(notionToken: string): Client {
   return notionClient;
 }
 async function fromPageId(
+  options: DocuNotionOptions,
   context: string,
+  parentId: string,
   pageId: string,
   order: number,
-  foundDirectlyInOutline: boolean
+  foundDirectlyInOutline: boolean,
+  isLink: boolean
 ): Promise<NotionPage> {
   const metadata = await getPageMetadata(pageId);
-
-  //logDebug("notion metadata", JSON.stringify(metadata));
-  return new NotionPage({
+  let currentPage = new NotionPage({
     layoutContext: context,
+    parentId,
     pageId,
     order,
     metadata,
     foundDirectlyInOutline,
   });
+  if (isLink) {
+    if (
+      parentId == options.rootPage &&
+      pageId != options.rootPage &&
+      currentPage.nameOrTitle != "Outline"
+    ) {
+      (currentPage.metadata as any).parent.subtype = "custom";
+      warning(`Scan: Page "${currentPage.nameOrTitle}" is a link outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
+    } else {
+      warning(`Scan: Page "${currentPage.nameOrTitle}" is a link to a page.`);
+    }
+  }
+  
+  //logDebug("notion metadata", JSON.stringify(metadata));
+  return currentPage
 }
 
 // This function is copied (and renamed from modifyNumberedListObject) from notion-to-md.

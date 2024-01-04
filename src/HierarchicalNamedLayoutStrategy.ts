@@ -1,7 +1,8 @@
 import * as fs from "fs-extra";
 import sanitize from "sanitize-filename";
 import { LayoutStrategy } from "./LayoutStrategy";
-import { NotionPage } from "./NotionPage";
+import { NotionPage, PageSubType } from "./NotionPage";
+import { warning } from "./log";
 
 // This strategy gives us a file tree that mirrors that of notion.
 // Each level in the outline becomes a directory, and each file bears the name of the Notion document.
@@ -36,12 +37,19 @@ export class HierarchicalNamedLayoutStrategy extends LayoutStrategy {
       .replaceAll("'", "")
       .replaceAll("?", "-");
 
+    let path;
+  if (page.subtype === PageSubType.Custom) {
+    // For Custom pages, store them directly in src/pages
+    path = this.rootDirectory +`/tmp/${sanitizedName}${extensionWithDot}`;
+  } else {
+    
+    // For all other pages, use the existing structure for Docusaurus to parse
     const context = ("/" + page.layoutContext + "/").replaceAll("//", "/");
-    const path =
-      this.rootDirectory + context + sanitizedName + extensionWithDot;
-
-    return path;
+    path = this.rootDirectory + context + sanitizedName + extensionWithDot;
   }
+
+  return path;
+}
 
   //{
   //   "position": 2.5,

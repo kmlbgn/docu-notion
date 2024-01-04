@@ -3,7 +3,6 @@ import { ListBlockChildrenResponseResult } from "notion-to-md/build/types";
 import markdownTable from "markdown-table";
 import { IGetBlockChildrenFn, IDocuNotionContext, IPlugin } from "./pluginTypes";
 import { NotionBlock } from "../types";
-import { doNotionToMarkdown } from "../transform"
 
 // This is mostly a copy of the table handler from notion-to-md. The change is to handle newlines in the
 // notion cell content.

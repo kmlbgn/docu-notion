@@ -47,7 +47,7 @@ function convertInternalLink(
   const match = linkRegExp.exec(markdownLink);
   if (match === null) {
     warning(
-      `[standardInternalLinkConversion] Could not parse link ${markdownLink}`
+      `[InternalLinkPlugin] Could not parse link ${markdownLink}`
     );
     return markdownLink;
   }
@@ -61,10 +61,6 @@ function convertInternalLink(
       hrefFromNotion = hrefFromNotion.substring(lastSpecialCharIndex + 1);
   }
 
-  verbose(
-    `[standardInternalLinkConversion] Converting ${markdownLink} with has url ${hrefFromNotion}`
-  );
-
   const pages = context.pages;
   // find the page where pageId matches hrefFromNotion
   const targetPage = pages.find(p => {
@@ -74,7 +70,7 @@ function convertInternalLink(
   if (!targetPage) {
     // About this situation. See https://github.com/sillsdev/docu-notion/issues/9
     warning(
-      `[standardInternalLinkConversion] Could not find the target for ${hrefFromNotion}. Note that links to outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
+      `Link parsing: [InternalLinkPlugin] Could not find the target for ${hrefFromNotion}. Note that links to outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
     );
     return "**[Problem Internal Link]**";
   }
@@ -108,7 +104,7 @@ function convertLinkHref(
   const { fragmentId } = parseLinkId(url);
  // Log only if fragmentId is not an empty string
   if (fragmentId !== "") {
-    verbose(`Parsed ${url} and got Fragment ID: ${fragmentId}`);
+    verbose(`Link parsing: [InternalLinkPlugin] Parsed ${url} and got Fragment ID: ${fragmentId}`);
   }
   convertedLink += fragmentId;
 
@@ -131,7 +127,7 @@ export function parseLinkId(fullLinkId: string): {
 }
 
 export const standardInternalLinkConversion: IPlugin = {
-  name: "standard internal link conversion",
+  name: "InternalLinkPlugin",
   linkModifier: {
     // from notion (or notion-md?) we get slightly different hrefs depending on whether the links is "inline"
     // (has some other text that's been turned into a link) or "raw".

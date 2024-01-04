@@ -9,13 +9,18 @@ import { ListBlockChildrenResponseResults } from "notion-to-md/build/types";
 // create pages for each node of the outline and then add links from those to the database pages. In this way, we get the benefits of database
 // pages (metadata, workflow, etc) and also normal pages (order, position in the outline).
 export enum PageType {
-  CategoryIndex,
   DatabasePage,
   Simple,
+}
+export enum PageSubType {
+  CategoryIndex,
+  Custom,
+  Content,
 }
 
 export class NotionPage {
   public metadata: GetPageResponse;
+  public parentId: string;
   public pageId: string;
   public order: number;
   public layoutContext: string; // where we found it in the hierarchy of the outline
@@ -23,12 +28,14 @@ export class NotionPage {
 
   public constructor(args: {
     layoutContext: string;
+    parentId: string;
     pageId: string;
     order: number;
     metadata: GetPageResponse;
     foundDirectlyInOutline: boolean;
   }) {
     this.layoutContext = args.layoutContext;
+    this.parentId = args.parentId
     this.pageId = args.pageId;
     this.order = args.order;
     this.metadata = args.metadata;
@@ -59,21 +66,27 @@ export class NotionPage {
     {
         "object": "page",
         "parent": {
-            ("isCategory": "true")
             "type": "page_id",
             or
             "type": "database_id",
             ...
         },
     */
-
-    // Check IsCategory flag under parent for level pages with index content
-    if ((this.metadata as any).parent.IsCategory) {
-      return PageType.CategoryIndex;
-    }
     return (this.metadata as any).parent.type === "database_id"
       ? PageType.DatabasePage
       : PageType.Simple;
+  }
+
+  public get subtype(): PageSubType {
+    // Check subtype flag under parent for level pages with index content or custom pages
+    let subtype = (this.metadata as any).parent?.subtype;
+    if (subtype === 'custom') {
+      return PageSubType.Custom;
+    } else if (subtype === 'categoryindex') {
+      return PageSubType.CategoryIndex;
+    } else {
+      return PageSubType.Content;
+    }
   }
 
   // In Notion, pages from the Database have names and simple pages have titles.
@@ -83,7 +96,7 @@ export class NotionPage {
 
   public nameForFile(): string {
     // In Notion, pages from the Database have names and simple pages have titles. We use "index" by default for Level page with content.
-    if (this.type === PageType.CategoryIndex) {
+    if (this.subtype === PageSubType.CategoryIndex) {
       return "index";
     }
     return this.type === PageType.Simple

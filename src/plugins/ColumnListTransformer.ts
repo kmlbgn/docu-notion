@@ -30,9 +30,9 @@ async function notionColumnListToTabs(
         async child => await notionToMarkdown.blockToMarkdown(child)
       )
     );
-    const content = markdownContent.join("\n");
+    const content = markdownContent.join("\n\n");
 
-    return `<TabItem value="${label.toLowerCase()}" label="${label}">\n${content}\n</TabItem>`;
+    return `<TabItem value="${label.toLowerCase()}" label="${label}">\n\n${content}\n\n</TabItem>`;
   });
 
   const tabItems = await Promise.all(tabItemsPromises);
