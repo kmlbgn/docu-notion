@@ -33,6 +33,7 @@ export async function blocksToMarkdown(
   //   console.log(pages[0].matchesLinkId);
   // }
   const docunotionContext: IDocuNotionContext = {
+    config: config,
     notionToMarkdown: notionToMD,
     getBlockChildren: (id: string) => {
       // We call numberChildrenIfNumberedList here because the real getBlockChildren does

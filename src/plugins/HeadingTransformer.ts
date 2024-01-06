@@ -31,6 +31,7 @@ async function headingTransformer(
   const blockIdWithoutDashes = block.id.replaceAll("-", "");
 
   // Finally, append the block id so that it can be the target of a link.
+  
   return `${markdown} {#${blockIdWithoutDashes}}`;
 }
 

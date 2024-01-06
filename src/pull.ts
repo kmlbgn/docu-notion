@@ -124,17 +124,19 @@ async function outputPages(
   pages: Array<NotionPage>
 ) {
   const context: IDocuNotionContext = {
+    config: config,
+    layoutStrategy: layoutStrategy,
+    options: options,
     getBlockChildren: getBlockChildren,
+    notionToMarkdown: notionToMarkdown,
     directoryContainingMarkdown: "", // this changes with each page
     relativeFilePathToFolderContainingPage: "", // this changes with each page
-    layoutStrategy: layoutStrategy,
-    notionToMarkdown: notionToMarkdown,
-    options: options,
+    convertNotionLinkToLocalDocusaurusLink: (url: string) =>
+      convertInternalUrl(context, url),
     pages: pages,
     counts: counts, // review will this get copied or pointed to?
     imports: [],
-    convertNotionLinkToLocalDocusaurusLink: (url: string) =>
-      convertInternalUrl(context, url),
+
   };
   for (const page of pages) {
     layoutStrategy.pageWasSeen(page);
@@ -158,6 +160,7 @@ async function outputPages(
       );
       ++context.counts.skipped_because_status;
     } else {
+      //TODO: config no longer needs to be passed now that it is part of context
       const markdown = await getMarkdownForPage(config, context, page);
       writePage(page, markdown);
     }

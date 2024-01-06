@@ -3,7 +3,7 @@ import { NotionPage } from "../NotionPage";
 import { NotionToMarkdown } from "notion-to-md";
 import { DocuNotionOptions } from "../pull";
 import { LayoutStrategy } from "../LayoutStrategy";
-import { ICounts, NotionBlock } from "../index";
+import { ICounts, IDocuNotionConfig, NotionBlock } from "../index";
 
 type linkConversionFunction = (
   context: IDocuNotionContext,
@@ -67,6 +67,7 @@ export type ICustomNotionToMarkdownConversion = (
 export type IGetBlockChildrenFn = (id: string) => Promise<NotionBlock[]>;
 
 export type IDocuNotionContext = {
+  config: IDocuNotionConfig,
   layoutStrategy: LayoutStrategy;
   options: DocuNotionOptions;
   getBlockChildren: IGetBlockChildrenFn;

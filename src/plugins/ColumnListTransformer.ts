@@ -1,6 +1,6 @@
 import { NotionBlock } from "../types";
 import { IDocuNotionContext, IPlugin } from "./pluginTypes";
-import { doNotionToMarkdown } from "../transform";
+import { doNotionToMarkdown, doNotionBlockModifications } from "../transform";
 import { warning } from "../log";
 
 
@@ -33,6 +33,10 @@ async function notionColumnListToTabs(
     //   )
     // );
     // const content = markdownContent.join("\n\n");
+
+    //TODO: can we make an sub-content processing flow from getMarkdownFromNotionBlocks ? 
+    doNotionBlockModifications(columnChildren, docunotionContext.config);
+    
     const content = await doNotionToMarkdown(docunotionContext, columnChildren);
 
     return `<TabItem value="${label.toLowerCase()}" label="${label}">\n\n${content}\n\n</TabItem>`;
