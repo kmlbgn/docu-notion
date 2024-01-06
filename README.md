@@ -135,7 +135,7 @@ Ubuntu 20.04
 4. **Parse Pages with docu-notion:**
 
   ```bash
-  npx docu-notion -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE
+  npx docu-notion-kira -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE
   ```
 
 ## Starting Docusaurus Server
@@ -149,7 +149,7 @@ Ubuntu 20.04
 
 # Docu-notion Command line
 
-Usage: docu-notion -n <token> -r <root> [options]
+Usage: docu-notion-kira -n <token> -r <root> [options]
 
 Options:
 

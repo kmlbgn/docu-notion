@@ -2,7 +2,6 @@ import * as fs from "fs-extra";
 import sanitize from "sanitize-filename";
 import { LayoutStrategy } from "./LayoutStrategy";
 import { NotionPage, PageSubType } from "./NotionPage";
-import { warning } from "./log";
 
 // This strategy gives us a file tree that mirrors that of notion.
 // Each level in the outline becomes a directory, and each file bears the name of the Notion document.

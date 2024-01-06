@@ -1,22 +1,24 @@
-import { NotionToMarkdown } from "notion-to-md";
 import { NotionBlock } from "../types";
 import { IPlugin } from "./pluginTypes";
-import { logDebug } from "../log";
+import { logDebug, warning } from "../log";
 
 // Makes links to headings work in docusaurus
 // https://github.com/sillsdev/docu-notion/issues/20
 async function headingTransformer(
-  notionToMarkdown: NotionToMarkdown,
   block: NotionBlock
 ): Promise<string> {
   // First, remove the prefix we added to the heading type
   (block as any).type = block.type.replace("DN_", "");
 
-  const markdown = await notionToMarkdown.blockToMarkdown(block);
+  const markdown = await headingToMarkdown(block);
+  
 
   logDebug(
     "headingTransformer, markdown of a heading before adding id",
     markdown
+  );
+  warning(
+    `[headingTransformer] Parsed ${markdown}`
   );
 
   // To make heading links work in docusaurus, we append an id. E.g.
@@ -29,6 +31,7 @@ async function headingTransformer(
   const blockIdWithoutDashes = block.id.replaceAll("-", "");
 
   // Finally, append the block id so that it can be the target of a link.
+  
   return `${markdown} {#${blockIdWithoutDashes}}`;
 }
 
@@ -54,17 +57,52 @@ export const standardHeadingTransformer: IPlugin = {
     {
       type: "DN_heading_1",
       getStringFromBlock: (context, block) =>
-        headingTransformer(context.notionToMarkdown, block),
+        headingTransformer(block),
     },
     {
       type: "DN_heading_2",
       getStringFromBlock: (context, block) =>
-        headingTransformer(context.notionToMarkdown, block),
+        headingTransformer(block),
     },
     {
       type: "DN_heading_3",
       getStringFromBlock: (context, block) =>
-        headingTransformer(context.notionToMarkdown, block),
+        headingTransformer(block),
     },
   ],
 };
+
+function headingToMarkdown(block: NotionBlock) {
+  let content = "";
+  const { type } = block;
+
+  switch (type) {
+      case "heading_1":
+          content = block.heading_1.rich_text.map((item: any) => item.plain_text).join("");
+          return `## ${sanitize(content)}`;
+
+      case "heading_2":
+          content = block.heading_2.rich_text.map((item: any) => item.plain_text).join("");
+          return `### ${sanitize(content)}`;
+
+      case "heading_3":
+          content = block.heading_3.rich_text.map((item: any) => item.plain_text).join("");
+          return `#### ${sanitize(content)}`;
+
+      default:
+          return ""; // Ignore all other types
+  }
+}
+
+function sanitize(text: string) {
+  // Remove Markdown bold and italic formatting
+  const cleanedText = text.replace(/[*_]/g, '');
+
+  const words = cleanedText.split(' ');
+
+  // Capitalize the first word and lowercase the rest
+  return words.map((word, index) => index === 0 ? 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() :
+    word.toLowerCase()
+  ).join(' ');
+}

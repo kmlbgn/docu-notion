@@ -30,18 +30,6 @@ export async function getMarkdownForPage(
 
   logDebugFn("markdown from page", () => JSON.stringify(blocks, null, 2));
 
-  const body = await getMarkdownFromNotionBlocks(context, config, blocks);
-  const frontmatter = getFrontMatter(page); // todo should be a plugin
-  return `${frontmatter}\n${body}`;
-}
-
-// this is split off from getMarkdownForPage so that unit tests can provide the block contents
-export async function getMarkdownFromNotionBlocks(
-  context: IDocuNotionContext,
-  config: IDocuNotionConfig,
-  blocks: Array<NotionBlock>
-): Promise<string> {
-
   // Level page index.md content filter : Keep the block if it is not a child page or only contains a mention (is a link to page)
   // Note: this will filters EVERY page. We assume child_page and mention block to be used only for the purpose of creating a new page.
   // If you want to use links to other pages, you'll have to put a bit of text in the block.
@@ -67,14 +55,26 @@ export async function getMarkdownFromNotionBlocks(
       return true;
   });
 
+  const body = await getMarkdownFromNotionBlocks(context, config, filteredBlocks);
+  const frontmatter = getFrontMatter(page); // todo should be a plugin
+  return `${frontmatter}\n${body}`;
+}
+
+// this is split off from getMarkdownForPage so that unit tests can provide the block contents
+export async function getMarkdownFromNotionBlocks(
+  context: IDocuNotionContext,
+  config: IDocuNotionConfig,
+  blocks: Array<NotionBlock>
+): Promise<string> {
+
   // changes to the blocks we get from notion API
-  doNotionBlockTransforms(filteredBlocks, config);
+  doNotionBlockModifications(blocks, config);
 
   // overrides for the default notion-to-markdown conversions
   registerNotionToMarkdownCustomTransforms(config, context);
 
   // the main conversion to markdown, using the notion-to-md library
-  let markdown = await doNotionToMarkdown(context, filteredBlocks); // ?
+  let markdown = await doNotionToMarkdown(context, blocks); 
 
   // corrections to links after they are converted to markdown,
   // with access to all the pages we've seen
@@ -88,6 +88,7 @@ export async function getMarkdownFromNotionBlocks(
   // console.log("markdown after regex fixes", markdown);
   // console.log("body after regex", body);
 
+  //TODO: make this a standalone function
   const uniqueImports = [...new Set(context.imports)];
   const imports = uniqueImports.join("\n");
   context.imports = []; // reset for next page
@@ -95,7 +96,7 @@ export async function getMarkdownFromNotionBlocks(
 }
 
 // operations on notion blocks before they are converted to markdown
-export function doNotionBlockTransforms(
+export function doNotionBlockModifications(
   blocks: Array<NotionBlock>,
   config: IDocuNotionConfig
 ) {
@@ -111,6 +112,7 @@ export function doNotionBlockTransforms(
   }
 }
 
+// simple regex-based tweaks. These are usually related to docusaurus
 async function doTransformsOnMarkdown(
   context: IDocuNotionContext,
   config: IDocuNotionConfig,

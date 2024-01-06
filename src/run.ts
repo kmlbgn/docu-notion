@@ -143,7 +143,7 @@ function promptUserForOverwrite(fileName: string, autoYes: Option) {
       output: process.stdout
     });
 
-    rl.question(`The file '${fileName}' already exists in 'src/test'. Do you want to overwrite it? (y/any) `, (answer: string) => {
+    rl.question(`The file '${fileName}' already exists in 'src/pages'. Do you want to overwrite it? (y/any) `, (answer: string) => {
       resolve(answer.toLowerCase() === 'y');
       rl.close();
     });
