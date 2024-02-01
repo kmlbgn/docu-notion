@@ -57,8 +57,6 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
   optionsForLogging.notionToken =
     optionsForLogging.notionToken.substring(0, 10) + "...";
 
-  const config = await loadConfigAsync();
-
   verbose(`Options:${JSON.stringify(optionsForLogging, null, 2)}`);
   await initImageHandling(
     options.imgPrefixInMarkdown || options.imgOutputPath || "",
@@ -68,17 +66,6 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
 
   const notionClient = initNotionClient(options.notionToken);
   notionToMarkdown = new NotionToMarkdown({ notionClient });
-
-  layoutStrategy = new HierarchicalNamedLayoutStrategy();
-
-  // Create output folder
-  await fs.mkdir(options.markdownOutputPath, { recursive: true });
-  layoutStrategy.setRootDirectoryForMarkdown(
-    options.markdownOutputPath.replace(/\/+$/, "") // trim any trailing slash
-  );
-
-  // Create a 'tmp' folder for custom pages
-  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, "") + '/tmp', { recursive: true });
 
   info("Connecting to Notion...");
 
@@ -100,76 +87,121 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
     exit(1);
   }
 
-  group(
-    "Stage 1: walk children of the page named 'Outline', looking for pages..."
-  );
-  await getPagesRecursively(options, "", options.rootPage, options.rootPage, 0, true);
-  logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
-  info(`Found ${pages.length} pages`);
-  endGroup();
-  group(
-    `Stage 2: convert ${pages.length} Notion pages to markdown and save locally...`
-  );
-  await outputPages(options, config, pages);
-  endGroup();
-  group("Stage 3: clean up old files & images...");
-  await layoutStrategy.cleanupOldFiles();
-  await cleanupOldImages();
-  endGroup();
+  await getTabs(options, "", "root", options.rootPage);
 }
 
-async function outputPages(
+
+async function getTabs(
   options: DocuNotionOptions,
-  config: IDocuNotionConfig,
-  pages: Array<NotionPage>
+  incomingContext: string,
+  parentId: string,
+  pageId: string,
 ) {
-  const context: IDocuNotionContext = {
-    config: config,
-    layoutStrategy: layoutStrategy,
-    options: options,
-    getBlockChildren: getBlockChildren,
-    notionToMarkdown: notionToMarkdown,
-    directoryContainingMarkdown: "", // this changes with each page
-    relativeFilePathToFolderContainingPage: "", // this changes with each page
-    convertNotionLinkToLocalDocusaurusLink: (url: string) =>
-      convertInternalUrl(context, url),
-    pages: pages,
-    counts: counts, // review will this get copied or pointed to?
-    imports: [],
+  // Get root page metadata
+  const rootPage = await fromPageId(
+    "",
+    parentId,
+    pageId,
+    0,
+    true,
+    false
+  );
 
-  };
-  for (const page of pages) {
-    layoutStrategy.pageWasSeen(page);
-    const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
+  // Load config
+  const config = await loadConfigAsync();
 
-    // most plugins should not write to disk, but those handling image files need these paths
-    context.directoryContainingMarkdown = Path.dirname(mdPath);
-    // TODO: This needs clarifying: getLinkPathForPage() is about urls, but
-    // downstream images.ts is using it as a file system path
-    context.relativeFilePathToFolderContainingPage = Path.dirname(
-      layoutStrategy.getLinkPathForPage(page)
+  // Get tabs list
+  const r = await getBlockChildren(rootPage.pageId);
+  const pageInfo = await rootPage.getContentInfo(r);
+
+  // Create a 'tmp' folder for pages within "Custom" tab
+  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, "") + '/tmp', { recursive: true });
+
+  warning(`Scan: Root page is "${rootPage.nameOrTitle}". Scanning for tabs...`);
+
+  // Recursively process each tabs
+  for (const tabPageInfo of pageInfo.childPageIdsAndOrder) {
+    // Get tabs page metadata
+    const tabs = await fromPageId(
+      incomingContext,
+      parentId,
+      tabPageInfo.id,
+      tabPageInfo.order,
+      false,
+      false
     );
 
-    if (
-      page.type === PageType.DatabasePage &&
-      context.options.statusTag != "*" &&
-      page.status !== context.options.statusTag
-    ) {
-      verbose(
-        `Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`
-      );
-      ++context.counts.skipped_because_status;
-    } else {
-      //TODO: config no longer needs to be passed now that it is part of context
-      const markdown = await getMarkdownForPage(config, context, page);
-      writePage(page, markdown);
-    }
+    warning(`Scan: Found tab "${tabs.nameOrTitle}". Processing tab's pages tree...`);
+
+    // Start new tree for this tab
+    layoutStrategy = new HierarchicalNamedLayoutStrategy();
+
+    // Create tab output folder
+    const subfolderPath = options.markdownOutputPath.replace(/\/+$/, "") + '/' + tabs.nameOrTitle;
+    await fs.mkdir(subfolderPath, { recursive: true });
+    layoutStrategy.setRootDirectoryForMarkdown(options.markdownOutputPath);
+
+    // Process tab's pages
+    group(
+      `Stage 1: walk children of tabs "${tabs.nameOrTitle}"`
+    );
+    await getPagesRecursively(options, "", options.rootPage, tabs.pageId, 0);
+    logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
+    info(`Found ${pages.length} pages`);
+    endGroup();
+    group(
+      `Stage 2: convert ${pages.length} Notion pages to markdown and save locally...`
+    );
+    await outputPages(options, config, pages);
+    endGroup();
+    group("Stage 3: clean up old files & images...");
+    await layoutStrategy.cleanupOldFiles();
+    await cleanupOldImages();
+    endGroup();
   }
 
-  info(`Finished processing ${pages.length} pages`);
-  info(JSON.stringify(counts));
+  // // ... and links to tabs.
+  // // TODO: test this
+  // for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
+  //   // Get tabs page metadata
+  //   const Tabs = await fromPageId(
+  //     options,
+  //     incomingContext,
+  //     parentId,
+  //     pageId,
+  //     pageOrder,
+  //     true,
+  //     false
+  //   );
+  //   // Create layoutStrat for this tab
+  //   layoutStrategy = new HierarchicalNamedLayoutStrategy();
+
+  //   // Create tab output folder
+  //   await fs.mkdir(options.markdownOutputPath, { recursive: true });
+  //   layoutStrategy.setRootDirectoryForMarkdown(
+  //     options.markdownOutputPath.replace(/\/+$/, "") // trim any trailing slash
+  //   );
+  //   // Process tab's pages
+  //   group(
+  //     "Stage 1: walk children of the page named 'Outline', looking for pages..."
+  //   );
+  //   await getPagesRecursively(options, "", options.rootPage, options.rootPage, 0, true);
+  //   logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
+  //   info(`Found ${pages.length} pages`);
+  //   endGroup();
+  //   group(
+  //     `Stage 2: convert ${pages.length} Notion pages to markdown and save locally...`
+  //   );
+  //   await outputPages(options, config, pages);
+  //   endGroup();
+  //   group("Stage 3: clean up old files & images...");
+  //   await layoutStrategy.cleanupOldFiles();
+  //   await cleanupOldImages();
+  //   endGroup();
+  // }
 }
 
+//TODO: change description
 // This walks the "Outline" page and creates a list of all the nodes that will
 // be in the sidebar, including the directories, the pages that are linked to
 // that are parented in from the "Database", and any pages we find in the
@@ -182,10 +214,8 @@ async function getPagesRecursively(
   parentId: string,
   pageId: string,
   pageOrder: number,
-  rootLevel: boolean
 ) {
   const currentPage = await fromPageId(
-    options,
     incomingContext,
     parentId,
     pageId,
@@ -201,58 +231,57 @@ async function getPagesRecursively(
   const r = await getBlockChildren(currentPage.pageId);
   const pageInfo = await currentPage.getContentInfo(r);
 
-  // case: root page
+  // // case: root page
+  // if (
+  //   currentPage.pageId == parentId
+  // ){
+  //   warning(`Scan: Root page is "${currentPage.nameOrTitle}". Scanning...`);
+  //   let layoutContext = incomingContext; 
+
+  //   // Recursively process each child page...
+  //   for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
+  //     await getPagesRecursively(
+  //       options,
+  //       layoutContext,
+  //       currentPage.pageId,
+  //       childPageInfo.id,
+  //       childPageInfo.order,
+  //       false
+  //     );
+  //   }
+  //   // ... and links to page.
+  //   for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
+  //     pages.push(
+  //       await fromPageId(
+  //         options,
+  //         layoutContext,
+  //         currentPage.pageId,
+  //         linkPageInfo.id,
+  //         linkPageInfo.order,
+  //         false,
+  //         true
+  //       )
+  //     );
+  //   }
+  // }
+
+  // // case: custom page contained in the root page to be moved into Docusaurus src/pages folder, except the Outline.
+  // else if (
+  //   currentPage.nameOrTitle != "Outline" &&
+  //   currentPage.parentId == options.rootPage &&
+  //   currentPage.pageId != options.rootPage
+  //   // pageInfo.hasContent
+  // ){
+  //   warning(`Scan: Page "${currentPage.nameOrTitle}" is outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
+  //   // Set subtype flag
+  //   (currentPage.metadata as any).parent.subtype = "custom";
+  //   pages.push(currentPage);
+  // }
+
+  // case: Category page with an index, which creates a dropdown with content in the sidebar 
   if (
-    currentPage.pageId == parentId
-  ){
-    warning(`Scan: Root page is "${currentPage.nameOrTitle}". Scanning...`);
-    let layoutContext = incomingContext; 
-
-    // Recursively process each child page...
-    for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
-      await getPagesRecursively(
-        options,
-        layoutContext,
-        currentPage.pageId,
-        childPageInfo.id,
-        childPageInfo.order,
-        false
-      );
-    }
-    // ... and links to page.
-    for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-      pages.push(
-        await fromPageId(
-          options,
-          layoutContext,
-          currentPage.pageId,
-          linkPageInfo.id,
-          linkPageInfo.order,
-          false,
-          true
-        )
-      );
-    }
-  }
-
-  // case: custom page contained in the root page to be moved into Docusaurus src/pages folder, except the Outline.
-  else if (
-    currentPage.nameOrTitle != "Outline" &&
-    currentPage.parentId == options.rootPage &&
-    currentPage.pageId != options.rootPage
-    // pageInfo.hasContent
-  ){
-    warning(`Scan: Page "${currentPage.nameOrTitle}" is outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
-    // Set subtype flag
-    (currentPage.metadata as any).parent.subtype = "custom";
-    pages.push(currentPage);
-  }
-
-  // case: Category page with an index 
-  else if (
-    !rootLevel &&
     pageInfo.hasContent &&
-    (pageInfo.childPageIdsAndOrder.length > 0 || pageInfo.linksPageIdsAndOrder.length > 0)
+    (pageInfo.childPageIdsAndOrder.length || pageInfo.linksPageIdsAndOrder.length)
   ){
     warning(`Scan: Page "${currentPage.nameOrTitle}" contains both childrens and content so it should produce a level with an index page.`);
 
@@ -267,11 +296,11 @@ async function getPagesRecursively(
       currentPage.nameOrTitle
     );
 
-    // Forward level for index.md and push it into the pages array
+    // Forward Category's index.md and push it into the pages array
     currentPage.layoutContext = layoutContext;
     pages.push(currentPage);
 
-    // Recursively process each child page and page link
+    // Recursively process child pages and page links
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
       await getPagesRecursively(
         options,
@@ -279,13 +308,11 @@ async function getPagesRecursively(
         currentPage.pageId,
         childPageInfo.id,
         childPageInfo.order,
-        false
       );
     }
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
       pages.push(
         await fromPageId(
-          options,
           layoutContext,
           currentPage.pageId,
           linkPageInfo.id,
@@ -296,28 +323,20 @@ async function getPagesRecursively(
       );
     }
   }
-  // case: a simple content page
-  else if (!rootLevel && pageInfo.hasContent) {
-    warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
-    pages.push(currentPage);
-  }
 
-  // case: A category page without index that exists just to create the level in the sidebar
-  else if (
-    pageInfo.childPageIdsAndOrder.length ||
-    pageInfo.linksPageIdsAndOrder.length
-  ) {
+  // case: A category page without index which creates a dropdown without content in the sidebar
+  else if (!pageInfo.hasContent && 
+    (pageInfo.childPageIdsAndOrder.length || pageInfo.linksPageIdsAndOrder.length)
+  ){
     warning(`Scan: Page "${currentPage.nameOrTitle}" only has child pages or links to page; it's a level without index.`);
-    let layoutContext = incomingContext;
-    // don't make a level for "Outline" page at the root
-    if (!rootLevel && currentPage.nameOrTitle !== "Outline") {
-      layoutContext = layoutStrategy.newLevel(
+    
+    let layoutContext = layoutStrategy.newLevel(
         options.markdownOutputPath,
         currentPage.order,
         incomingContext,
         currentPage.nameOrTitle
-      );
-    }
+    );
+
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
       await getPagesRecursively(
         options,
@@ -325,14 +344,12 @@ async function getPagesRecursively(
         currentPage.pageId,
         childPageInfo.id,
         childPageInfo.order,
-        false
       );
     }
 
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
       pages.push(
         await fromPageId(
-          options,
           layoutContext,
           currentPage.pageId,
           linkPageInfo.id,
@@ -343,6 +360,12 @@ async function getPagesRecursively(
       );
     }
   } 
+
+   // case: A simple content page
+   else if (pageInfo.hasContent) {
+    warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
+    pages.push(currentPage);
+  }
   
   // case: empty pages and undefined ones
   else {
@@ -469,7 +492,6 @@ export function initNotionClient(notionToken: string): Client {
   return notionClient;
 }
 async function fromPageId(
-  options: DocuNotionOptions,
   context: string,
   parentId: string,
   pageId: string,
@@ -486,18 +508,19 @@ async function fromPageId(
     metadata,
     foundDirectlyInOutline,
   });
-  if (isLink) {
-    if (
-      parentId == options.rootPage &&
-      pageId != options.rootPage &&
-      currentPage.nameOrTitle != "Outline"
-    ) {
-      (currentPage.metadata as any).parent.subtype = "custom";
-      warning(`Scan: Page "${currentPage.nameOrTitle}" is a link outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
-    } else {
-      warning(`Scan: Page "${currentPage.nameOrTitle}" is a link to a page.`);
-    }
-  }
+  //TODO: Revamp this
+  // if (isLink) {
+  //   if (
+  //     parentId == options.rootPage &&
+  //     pageId != options.rootPage &&
+  //     currentPage.nameOrTitle != "Outline"
+  //   ) {
+  //     (currentPage.metadata as any).parent.subtype = "custom";
+  //     warning(`Scan: Page "${currentPage.nameOrTitle}" is a link outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
+  //   } else {
+  //     warning(`Scan: Page "${currentPage.nameOrTitle}" is a link to a page.`);
+  //   }
+  // }
   
   //logDebug("notion metadata", JSON.stringify(metadata));
   return currentPage
@@ -520,4 +543,56 @@ export function numberChildrenIfNumberedList(
       numberedListIndex = 0;
     }
   }
+}
+
+async function outputPages(
+  options: DocuNotionOptions,
+  config: IDocuNotionConfig,
+  pages: Array<NotionPage>
+) {
+  const context: IDocuNotionContext = {
+    config: config,
+    layoutStrategy: layoutStrategy,
+    options: options,
+    getBlockChildren: getBlockChildren,
+    notionToMarkdown: notionToMarkdown,
+    directoryContainingMarkdown: "", // this changes with each page
+    relativeFilePathToFolderContainingPage: "", // this changes with each page
+    convertNotionLinkToLocalDocusaurusLink: (url: string) =>
+      convertInternalUrl(context, url),
+    pages: pages,
+    counts: counts, // review will this get copied or pointed to?
+    imports: [],
+
+  };
+  for (const page of pages) {
+    layoutStrategy.pageWasSeen(page);
+    const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
+
+    // most plugins should not write to disk, but those handling image files need these paths
+    context.directoryContainingMarkdown = Path.dirname(mdPath);
+    // TODO: This needs clarifying: getLinkPathForPage() is about urls, but
+    // downstream images.ts is using it as a file system path
+    context.relativeFilePathToFolderContainingPage = Path.dirname(
+      layoutStrategy.getLinkPathForPage(page)
+    );
+
+    if (
+      page.type === PageType.DatabasePage &&
+      context.options.statusTag != "*" &&
+      page.status !== context.options.statusTag
+    ) {
+      verbose(
+        `Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`
+      );
+      ++context.counts.skipped_because_status;
+    } else {
+      //TODO: config no longer needs to be passed now that it is part of context
+      const markdown = await getMarkdownForPage(config, context, page);
+      writePage(page, markdown);
+    }
+  }
+
+  info(`Finished processing ${pages.length} pages`);
+  info(JSON.stringify(counts));
 }

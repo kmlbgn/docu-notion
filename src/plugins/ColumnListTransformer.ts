@@ -19,6 +19,7 @@ async function notionColumnListToTabs(
     const columnChildren = await getBlockChildren(column.id);
 
     let label = "Tab";
+    // TODO: Check if change of type needed so that it doesnt get treated by heading transformer
     if (columnChildren.length > 0 && columnChildren[0].type === 'heading_1') {
       const richTextItems = columnChildren[0].heading_1.rich_text;
       
@@ -34,7 +35,7 @@ async function notionColumnListToTabs(
     // );
     // const content = markdownContent.join("\n\n");
 
-    //TODO: can we make an sub-content processing flow from getMarkdownFromNotionBlocks ? 
+    //TODO: Should probably make an sub-content processing fork of getMarkdownFromNotionBlocks  
     doNotionBlockModifications(columnChildren, docunotionContext.config);
     
     const content = await doNotionToMarkdown(docunotionContext, columnChildren);
