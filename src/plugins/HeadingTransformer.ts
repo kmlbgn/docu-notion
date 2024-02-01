@@ -1,6 +1,6 @@
 import { NotionBlock } from "../types";
 import { IPlugin } from "./pluginTypes";
-import { logDebug, warning } from "../log";
+import { logDebug, verbose } from "../log";
 
 // Makes links to headings work in docusaurus
 // https://github.com/sillsdev/docu-notion/issues/20
@@ -17,7 +17,7 @@ async function headingTransformer(
     "headingTransformer, markdown of a heading before adding id",
     markdown
   );
-  warning(
+  verbose(
     `[headingTransformer] Parsed ${markdown}`
   );
 
