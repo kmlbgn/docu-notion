@@ -95,16 +95,16 @@ function headingToMarkdown(block: NotionBlock) {
 }
 
 function sanitize(text: string) {
-  const exceptions = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'up'];
-  const alwaysCaps = 'kira';
+  const alwaysLower = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'up'];
+  const alwaysCaps = ['kira', 'cli'];
 
   return text
     .replace(/[*_]/g, '') // remove Markdown formatting
     .split(' ')
     .map((word, index) =>
-      alwaysCaps.toLowerCase() === word.toLowerCase()
-        ? alwaysCaps.toUpperCase()
-        : index === 0 || !exceptions.includes(word.toLowerCase())
+      alwaysCaps.includes(word.toLowerCase())
+        ? word.toUpperCase()
+        : index === 0 || !alwaysLower.includes(word.toLowerCase())
         ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
         : word.toLowerCase()
     )
