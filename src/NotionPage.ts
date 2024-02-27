@@ -262,6 +262,7 @@ export class NotionPage {
     }
   }
 
+  // TODO: l.288 can cause bugs if the mention type links to anything else than a page (i.e a workspace user).
   public async getContentInfo(
     children: ListBlockChildrenResponseResults
   ): Promise<{
