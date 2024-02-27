@@ -42,8 +42,8 @@ export type DocuNotionOptions = {
 
 let layoutStrategy: LayoutStrategy;
 let notionToMarkdown: NotionToMarkdown;
-const pages = new Array<NotionPage>();
-const counts = {
+let pages: Array<NotionPage>;
+let counts = {
   output_normally: 0,
   skipped_because_empty: 0,
   skipped_because_status: 0,
@@ -135,10 +135,13 @@ async function getTabs(
 
     // Start new tree for this tab
     layoutStrategy = new HierarchicalNamedLayoutStrategy();
+    pages = new Array<NotionPage>();
 
     // Create tab output folder
-    const subfolderPath = options.markdownOutputPath.replace(/\/+$/, "") + '/' + tabs.nameOrTitle;
-    await fs.mkdir(subfolderPath, { recursive: true });
+    // const subfolderPath = options.markdownOutputPath.replace(/\/+$/, "") + '/' + tabs.nameOrTitle;
+    // await fs.mkdir(subfolderPath, { recursive: true });
+    
+    //TODO: this is static dont need to be looped 
     layoutStrategy.setRootDirectoryForMarkdown(options.markdownOutputPath);
 
     // Process tab's pages
@@ -155,13 +158,14 @@ async function getTabs(
     await outputPages(options, config, pages);
     endGroup();
     group("Stage 3: clean up old files & images...");
-    await layoutStrategy.cleanupOldFiles();
-    await cleanupOldImages();
+    // TODO: pageWasSeen func is LayoutStrategy is scanning entire root and deleting anything not seen (not part of the pages array)
+    //       It needs to be edited to only scan the tabs path or completely deleted, otherwise it delete all previously parsed tabs. 
+    // await layoutStrategy.cleanupOldFiles();
+    // await cleanupOldImages();
     endGroup();
   }
 
-  // // ... and links to tabs.
-  // // TODO: test this
+  // TODO: links to tabs.
   // for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
   //   // Get tabs page metadata
   //   const Tabs = await fromPageId(
@@ -173,32 +177,6 @@ async function getTabs(
   //     true,
   //     false
   //   );
-  //   // Create layoutStrat for this tab
-  //   layoutStrategy = new HierarchicalNamedLayoutStrategy();
-
-  //   // Create tab output folder
-  //   await fs.mkdir(options.markdownOutputPath, { recursive: true });
-  //   layoutStrategy.setRootDirectoryForMarkdown(
-  //     options.markdownOutputPath.replace(/\/+$/, "") // trim any trailing slash
-  //   );
-  //   // Process tab's pages
-  //   group(
-  //     "Stage 1: walk children of the page named 'Outline', looking for pages..."
-  //   );
-  //   await getPagesRecursively(options, "", options.rootPage, options.rootPage, 0, true);
-  //   logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
-  //   info(`Found ${pages.length} pages`);
-  //   endGroup();
-  //   group(
-  //     `Stage 2: convert ${pages.length} Notion pages to markdown and save locally...`
-  //   );
-  //   await outputPages(options, config, pages);
-  //   endGroup();
-  //   group("Stage 3: clean up old files & images...");
-  //   await layoutStrategy.cleanupOldFiles();
-  //   await cleanupOldImages();
-  //   endGroup();
-  // }
 }
 
 //TODO: change description
@@ -508,7 +486,7 @@ async function fromPageId(
     metadata,
     foundDirectlyInOutline,
   });
-  //TODO: Revamp this
+  //TODO: Revamp this, need special logic for Custom page and better handling of link to page type. Because of this workflow doesnt work. 
   // if (isLink) {
   //   if (
   //     parentId == options.rootPage &&
@@ -585,6 +563,7 @@ async function outputPages(
       verbose(
         `Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`
       );
+      // TODO: count need to be reset for each loop otherwise moot
       ++context.counts.skipped_because_status;
     } else {
       //TODO: config no longer needs to be passed now that it is part of context

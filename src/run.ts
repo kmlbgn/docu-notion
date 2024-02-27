@@ -90,8 +90,6 @@ export async function run(): Promise<void> {
   async function moveTmpContents() {
     const destTmpPath = "src/pages";
     const srcTmpPath = path.join(options.markdownOutputPath.replace(/\/+$/, "")+ '/tmp');
-    warning(`dest:${destTmpPath}`)
-    warning(`src:${srcTmpPath}`)
     fs.ensureDirSync(destTmpPath);
   
     const tmpFiles = fs.readdirSync(srcTmpPath);

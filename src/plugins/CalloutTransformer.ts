@@ -2,6 +2,9 @@ import { NotionToMarkdown } from "notion-to-md";
 import { NotionBlock } from "../types";
 import { IPlugin } from "./pluginTypes";
 
+//TODO: mathematical expression are not parsed within a callout. This probably requires recursively treating the content of a callout block the same way 
+// as it in the columns which was having similar issue and was solved. 
+
 // In Notion, you can make a callout and change its emoji. We map 5 of these
 // to the 5 Docusaurus admonition styles.
 // This is mostly a copy of the callout code from notion-to-md. The change is to output docusaurus
