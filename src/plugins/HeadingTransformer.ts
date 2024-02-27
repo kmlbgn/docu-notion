@@ -95,14 +95,18 @@ function headingToMarkdown(block: NotionBlock) {
 }
 
 function sanitize(text: string) {
-  // Remove Markdown bold and italic formatting
-  const cleanedText = text.replace(/[*_]/g, '');
+  const exceptions = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'up'];
+  const alwaysCaps = 'kira';
 
-  const words = cleanedText.split(' ');
-
-  // Capitalize the first word and lowercase the rest
-  return words.map((word, index) => index === 0 ? 
-    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() :
-    word.toLowerCase()
-  ).join(' ');
+  return text
+    .replace(/[*_]/g, '') // remove Markdown formatting
+    .split(' ')
+    .map((word, index) =>
+      alwaysCaps.toLowerCase() === word.toLowerCase()
+        ? alwaysCaps.toUpperCase()
+        : index === 0 || !exceptions.includes(word.toLowerCase())
+        ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        : word.toLowerCase()
+    )
+    .join(' ');
 }
