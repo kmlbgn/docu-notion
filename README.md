@@ -27,10 +27,9 @@ Docu-notion automatically identifies and removes blocks that are either child pa
 
 # **Custom Pages**
 
-Docusaurus automatically generates custom pages from the `src/pages` directory, creating corresponding slugs and links. Pages located at the root but outside the 'Outline' are treated as custom pages, converted to markdown, and moved to `src/pages`. This setup supports both standard pages and links to database pages.
+Docusaurus automatically generates custom pages from the `src/pages` directory, creating corresponding slugs and links. You can create any page within the root page in Notion, for instance naming it "src/page", and manually move these pages into the Docusaurus `src/pages` folder as needed. This approach is simpler and easily managed using github workflow.
 
-**Note on Conflicts**: If the 'Outline' contains content, an `index.md` is generated. However, if there's also an `index.js` in `src/pages`, Docusaurus prioritizes the last processed page. Testing indicates that `src/pages` takes precedence over pages in the `docs` folder, therefore `index.md` will not be taken into account.
-
+**Note on Conflicts**: Pages within `src/pages` are prioritized by Docusaurus and can lead to conflicts with pages that have matching slugs elsewhere in the project. E.g. If both an index.md or a page with "/" slug in the main documentation and an "index.js" in `src/pages` exist, Docusaurus will prioritize the content in `src/pages`, potentially overlooking the index.md.
 
 # Custom parsing (Plugins)
 

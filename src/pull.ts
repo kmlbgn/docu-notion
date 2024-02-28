@@ -87,9 +87,10 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
     exit(1);
   }
 
+  // Create a base folder using markdownOutputPath (default "tabs")
+  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, ""), { recursive: true });
   await getTabs(options, "", "root", options.rootPage);
 }
-
 
 async function getTabs(
   options: DocuNotionOptions,
@@ -113,9 +114,6 @@ async function getTabs(
   // Get tabs list
   const r = await getBlockChildren(rootPage.pageId);
   const pageInfo = await rootPage.getContentInfo(r);
-
-  // Create a 'tmp' folder for pages within "Custom" tab
-  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, "") + '/tmp', { recursive: true });
 
   warning(`Scan: Root page is "${rootPage.nameOrTitle}". Scanning for tabs...`);
 
@@ -160,6 +158,7 @@ async function getTabs(
     group("Stage 3: clean up old files & images...");
     // TODO: pageWasSeen func is LayoutStrategy is scanning entire root and deleting anything not seen (not part of the pages array)
     //       It needs to be edited to only scan the tabs path or completely deleted, otherwise it delete all previously parsed tabs. 
+    //       Maybe same for OldImages.
     // await layoutStrategy.cleanupOldFiles();
     // await cleanupOldImages();
     endGroup();
@@ -179,13 +178,9 @@ async function getTabs(
   //   );
 }
 
-//TODO: change description
-// This walks the "Outline" page and creates a list of all the nodes that will
-// be in the sidebar, including the directories, the pages that are linked to
-// that are parented in from the "Database", and any pages we find in the
-// outline that contain content (which we call "Simple" pages). Later, we can
-// then step through this list creating the files we need, and, crucially, be
-// able to figure out what the url will be for any links between content pages.
+// getPagesRecursively navigates the root page and iterates over each page within it,
+// treating each as an independent tree structure. It constructs a folder structure of pages for sidebar organization,
+// preserving the hierarchical order set in Notion.
 async function getPagesRecursively(
   options: DocuNotionOptions,
   incomingContext: string,
@@ -209,54 +204,7 @@ async function getPagesRecursively(
   const r = await getBlockChildren(currentPage.pageId);
   const pageInfo = await currentPage.getContentInfo(r);
 
-  // // case: root page
-  // if (
-  //   currentPage.pageId == parentId
-  // ){
-  //   warning(`Scan: Root page is "${currentPage.nameOrTitle}". Scanning...`);
-  //   let layoutContext = incomingContext; 
-
-  //   // Recursively process each child page...
-  //   for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
-  //     await getPagesRecursively(
-  //       options,
-  //       layoutContext,
-  //       currentPage.pageId,
-  //       childPageInfo.id,
-  //       childPageInfo.order,
-  //       false
-  //     );
-  //   }
-  //   // ... and links to page.
-  //   for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-  //     pages.push(
-  //       await fromPageId(
-  //         options,
-  //         layoutContext,
-  //         currentPage.pageId,
-  //         linkPageInfo.id,
-  //         linkPageInfo.order,
-  //         false,
-  //         true
-  //       )
-  //     );
-  //   }
-  // }
-
-  // // case: custom page contained in the root page to be moved into Docusaurus src/pages folder, except the Outline.
-  // else if (
-  //   currentPage.nameOrTitle != "Outline" &&
-  //   currentPage.parentId == options.rootPage &&
-  //   currentPage.pageId != options.rootPage
-  //   // pageInfo.hasContent
-  // ){
-  //   warning(`Scan: Page "${currentPage.nameOrTitle}" is outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
-  //   // Set subtype flag
-  //   (currentPage.metadata as any).parent.subtype = "custom";
-  //   pages.push(currentPage);
-  // }
-
-  // case: Category page with an index, which creates a dropdown with content in the sidebar 
+  // Case: Category page with an index, which creates a dropdown with content in the sidebar 
   if (
     pageInfo.hasContent &&
     (pageInfo.childPageIdsAndOrder.length || pageInfo.linksPageIdsAndOrder.length)
@@ -302,7 +250,7 @@ async function getPagesRecursively(
     }
   }
 
-  // case: A category page without index which creates a dropdown without content in the sidebar
+  // Case: A category page without index which creates a dropdown without content in the sidebar
   else if (!pageInfo.hasContent && 
     (pageInfo.childPageIdsAndOrder.length || pageInfo.linksPageIdsAndOrder.length)
   ){
@@ -339,13 +287,13 @@ async function getPagesRecursively(
     }
   } 
 
-   // case: A simple content page
-   else if (pageInfo.hasContent) {
+  // Case: A simple content page
+  else if (pageInfo.hasContent) {
     warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
     pages.push(currentPage);
   }
   
-  // case: empty pages and undefined ones
+  // Case: Empty pages and undefined ones
   else {
     console.info(
       warning(
@@ -486,20 +434,9 @@ async function fromPageId(
     metadata,
     foundDirectlyInOutline,
   });
-  //TODO: Revamp this, need special logic for Custom page and better handling of link to page type. Because of this workflow doesnt work. 
-  // if (isLink) {
-  //   if (
-  //     parentId == options.rootPage &&
-  //     pageId != options.rootPage &&
-  //     currentPage.nameOrTitle != "Outline"
-  //   ) {
-  //     (currentPage.metadata as any).parent.subtype = "custom";
-  //     warning(`Scan: Page "${currentPage.nameOrTitle}" is a link outside the Outline, it will be stored in "src/pages" to be used as your convenience.`);
-  //   } else {
-  //     warning(`Scan: Page "${currentPage.nameOrTitle}" is a link to a page.`);
-  //   }
-  // }
-  
+  if (isLink) {
+    warning(`Scan: Page "${currentPage.nameOrTitle}" is a link to a database page.`);
+  }
   //logDebug("notion metadata", JSON.stringify(metadata));
   return currentPage
 }
