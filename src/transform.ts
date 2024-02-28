@@ -3,7 +3,7 @@ import {
   IDocuNotionContext,
   IRegexMarkdownModification,
 } from "./plugins/pluginTypes";
-import { error, info, logDebug, logDebugFn, verbose, warning } from "./log";
+import { info, logDebug, logDebugFn, verbose, warning } from "./log";
 import { NotionPage } from "./NotionPage";
 import { IDocuNotionConfig } from "./config/configuration";
 import { NotionBlock } from "./types";

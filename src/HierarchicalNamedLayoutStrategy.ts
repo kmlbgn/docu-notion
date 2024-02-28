@@ -45,18 +45,11 @@ export class HierarchicalNamedLayoutStrategy extends LayoutStrategy {
       .replaceAll("?", "-");
 
     let path;
-  if (page.subtype === PageSubType.Custom) {
-    // For Custom pages, store them directly in src/pages
-    path = this.rootDirectory +`/tmp/${sanitizedName}${extensionWithDot}`;
-  } else {
-    
     // For all other pages, use the existing structure for Docusaurus to parse
     const context = ("/" + page.layoutContext + "/").replaceAll("//", "/");
     path = this.rootDirectory + context + sanitizedName + extensionWithDot;
+    return path;
   }
-
-  return path;
-}
 
   //{
   //   "position": 2.5,

@@ -14,7 +14,6 @@ export enum PageType {
 }
 export enum PageSubType {
   CategoryIndex,
-  Custom,
   Content,
 }
 
@@ -78,11 +77,9 @@ export class NotionPage {
   }
 
   public get subtype(): PageSubType {
-    // Check subtype flag under parent for level pages with index content or custom pages
+    // Check subtype flag under parent for level pages with index content
     let subtype = (this.metadata as any).parent?.subtype;
-    if (subtype === 'custom') {
-      return PageSubType.Custom;
-    } else if (subtype === 'categoryindex') {
+    if (subtype === 'categoryindex') {
       return PageSubType.CategoryIndex;
     } else {
       return PageSubType.Content;
