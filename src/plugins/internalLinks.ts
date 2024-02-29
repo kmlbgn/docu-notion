@@ -81,7 +81,7 @@ function convertInternalLink(
     warning(
       `Link parsing: [InternalLinkPlugin] Could not find a local target for ${hrefFromNotion}. Note that links to other notions pages or outline sections are not supported > https://github.com/sillsdev/docu-notion/issues/9`
     );
-    return "**[Problem Internal Link]**";
+    return `${labelFromNotion}†`;
   }
 
   const label = convertLinkLabel(targetPage, labelFromNotion);
