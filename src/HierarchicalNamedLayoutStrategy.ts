@@ -1,21 +1,11 @@
 import * as fs from "fs-extra";
 import sanitize from "sanitize-filename";
 import { LayoutStrategy } from "./LayoutStrategy";
-import { NotionPage, PageSubType } from "./NotionPage";
-import {
-  endGroup,
-  error,
-  group,
-  info,
-  logDebug,
-  verbose,
-  warning,
-} from "./log";
+import { NotionPage } from "./NotionPage";
 
 // This strategy gives us a file tree that mirrors that of notion.
-// Each level in the outline becomes a directory, and each file bears the name of the Notion document.
+// Each level in the outline becomes a directory, and each file bears the name of the Notion page.
 // As long as you use slugs, the urls is still just something like https://site/slug
-
 export class HierarchicalNamedLayoutStrategy extends LayoutStrategy {
   public newLevel(
     dirRoot: string,

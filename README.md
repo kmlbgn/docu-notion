@@ -1,14 +1,22 @@
-# Description
-KIRA's documentation system integrates with docu-notion-kira, a forked version of [docu-notion](https://github.com/sillsdev/docu-notion) tailored for Kira Network. 
+# Nocusorus
+Nocusorus is a tool that fetches content from a provided Notion root page and generates a structured folder of markdown-based files containing its content for Docusaurus. Nocusaurus is built from [docu-notion](https://github.com/sillsdev/docu-notion).
 
-Docu-notion allows the use of Notion as the primary editing platform to produce content suitable for static site generators; Docusaurus in this case. This combination meets several challenging requirements, such as automatique deployment, editing workflow features, localization support via Crowdin, and capabilities for both online and offline distribution. Future plans include adding versioning capabilities.
+The root page in Notion serves as the foundation for the generated documentation structure. It contains one or more "Tabs Pages", each representing a separate folder structure or content hierarchy, similar to a merkle tree or a separate navigation section.
 
-# How It Works ?
+Cross-linking between different Tab structures is supported, allowing for interconnected documentation across multiple content hierarchies.
 
-Docu-notion fetches content from a provided Notion root page and produce a structured folder of markdown-base files of its content. The root page has two main components:
+Nocusaurus supports custom parsing through plugins, making it versatile for use with various static site generators beyond Docusaurus. This flexibility allows you to create documentation websites or other projects using the static generator of your choice while still leveraging Notion as CMS.
 
-1. **The Database (Optional)** - This is where the documentation pages are stored. They include content and are equipped with workflow properties to facilitate a Kanban-style management process where pages can have metadata that can be leveraged and are published according to their ‘status’.
-2. **The Outline Page (Mandatory)** - This is a central Notion page that organizes content hierarchically. It serves as the foundation of the documentation structure. The arrangement of sub-pages within the Outline is directly reflected in the final documentation site and its sidebar navigation. These sub-pages should link back to the relevant documents housed in the database.
+# How It Works
+Nocusorus requires a Notion root page with two main components:
+
+1. Tabs Page (Mandatory)
+A Tab page is a Notion page that organizes content hierarchically. Each Tab page represents a separate folder structure or content hierarchy in the generated documentation. The arrangement of sub-pages within a Tab is directly reflected in the final documentation and the Tab's sidebar navigation. The Tab's sub-pages link back to the relevant documents housed in the database (if applicable).
+
+For example, in a Docusaurus website using multi-instances, each Tab page could represent the foundation for the "docs", "blog", or other other top navigation sections.
+
+2. Databases (Optional)
+Databases in Notion can be used to store the documentation pages within a Tab. When pages are stored in a database, they can have metadata that can be leveraged, and they are published according to their 'status'. This enables a Kanban-style workflow management process for the documentation pages.
 
 ### **Page Structure in the Outline**
 
@@ -23,11 +31,11 @@ Blocks listed under the Outline page can be of the following types:
 
 ### **Links**
 
-Docu-notion automatically identifies and removes blocks that are either child pages or links to pages located at the root level of the page. If you need to include such blocks within your content, they must be embedded within another block type, like a table or a column, or they should be accompanied by some text within the same block to trick this logic.
+Nocusorus automatically identifies and removes blocks that are either child pages or links to pages located at the root level of the page. If you need to include such blocks within your content, they must be embedded within another block type, like a table or a column, or they should be accompanied by some text within the same block to trick this logic.
 
 # **Custom Pages**
 
-Docusaurus automatically generates custom pages from the `src/pages` directory, creating corresponding slugs and links. You can create any page within the root page in Notion, for instance naming it "src/page", and manually move these pages into the Docusaurus `src/pages` folder as needed. This approach is simpler and easily managed using github workflow.
+Docusaurus automatically generates custom pages from the `src/pages` directory, creating corresponding slugs and links. You can create any page within the root page in Notion, for instance naming it "src/page", and manually move these pages into the Docusaurus `src/pages` folder as needed. This approach is simpler and easily managed using github workflow or your own terminal.
 
 **Note on Conflicts**: Pages within `src/pages` are prioritized by Docusaurus and can lead to conflicts with pages that have matching slugs elsewhere in the project. E.g. If both an index.md or a page with "/" slug in the main documentation and an "index.js" in `src/pages` exist, Docusaurus will prioritize the content in `src/pages`, potentially overlooking the index.md.
 
@@ -48,7 +56,7 @@ To map Notion callouts to Docusaurus admonitions, ensure the icon is for the typ
 
 The default admonition type, if no matching icon is found, is "note".
 
-# Setup: Docu-notion-kira + docusaurus
+# Setup: Nocusorus + docusaurus
 
 #### Host specs:
 
@@ -124,7 +132,7 @@ Ubuntu 20.04
     export DOCU_NOTION_SAMPLE_ROOT_PAGE=[***]
     export DOCU_NOTION_INTEGRATION_TOKEN=[***]
     ```
-  * Go to the root page and add docu-notion-kira integration. This page should have, as direct children, "Outline" (required) and "Database" (optional) pages. Follow these instructions. Source: [Notion integration](https://developers.notion.com/docs/create-a-notion-integration#give-your-integration-page-permissions)
+  * Go to the root page and add nocusaurus integration. This page should have, as direct children, a Tab (required) and a "Database" associated to this tab (optional). Follow these instructions. Source: [Notion integration](https://developers.notion.com/docs/create-a-notion-integration#give-your-integration-page-permissions)
 
 3. **Install Dependencies:**
   ```bash
@@ -134,7 +142,7 @@ Ubuntu 20.04
 4. **Parse Pages with docu-notion:**
 
   ```bash
-  npx docu-notion-kira -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE
+  npx nocusaurus -n $DOCU_NOTION_INTEGRATION_TOKEN -r $DOCU_NOTION_SAMPLE_ROOT_PAGE
   ```
 
 ## Starting Docusaurus Server
@@ -146,9 +154,9 @@ Ubuntu 20.04
   ```
   * Source [Docusaurus Intallation Guide](https://docusaurus.io/docs/installation)
 
-# Docu-notion Command line
+# Nocusorus Command line
 
-Usage: docu-notion-kira -n <token> -r <root> [options]
+Usage: nocusaurus -n <token> -r <root> [options]
 
 Options:
 

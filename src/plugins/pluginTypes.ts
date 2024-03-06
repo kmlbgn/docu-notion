@@ -74,8 +74,9 @@ export type IDocuNotionContext = {
   notionToMarkdown: NotionToMarkdown;
   directoryContainingMarkdown: string;
   relativeFilePathToFolderContainingPage: string;
+  tabsPages: NotionPage[];
+  allTabsPages: NotionPage[];
   convertNotionLinkToLocalDocusaurusLink: (url: string) => string | undefined;
-  pages: NotionPage[];
   counts: ICounts;
 
   // If the output is creating things like react elements, you can append their import definitions
