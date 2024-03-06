@@ -1,5 +1,5 @@
 import { IDocuNotionContext, IPlugin } from "./pluginTypes";
-import { error, warning, verbose } from "../log";
+import { warning, verbose } from "../log";
 import { NotionPage } from "../NotionPage";
 
 // converts a url to a local link, if it is a link to a page in the Notion site
@@ -19,9 +19,9 @@ export function convertInternalUrl(
     return undefined;
   }
   const id = match[1];
-  const pages = context.pages;
+  const allTabsPages = context.allTabsPages;
   // find the page where pageId matches hrefFromNotion
-  const targetPage = pages.find(p => {
+  const targetPage = allTabsPages.find(p => {
     return p.matchesLinkId(id);
   });
 
@@ -70,9 +70,9 @@ function convertInternalLink(
       hrefFromNotion = hrefFromNotion.substring(lastSpecialCharIndex + 1);
   }
 
-  const pages = context.pages;
+  const allTabsPages = context.allTabsPages;
   // find the page where pageId matches hrefFromNotion
-  const targetPage = pages.find(p => {
+  const targetPage = allTabsPages.find(p => {
     return p.matchesLinkId(hrefFromNotion);
   });
 

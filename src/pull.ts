@@ -3,7 +3,7 @@ import { NotionToMarkdown } from "notion-to-md";
 import { HierarchicalNamedLayoutStrategy } from "./HierarchicalNamedLayoutStrategy";
 import { LayoutStrategy } from "./LayoutStrategy";
 import { NotionPage, PageType } from "./NotionPage";
-import { initImageHandling, cleanupOldImages } from "./images";
+import { initImageHandling } from "./images";
 
 import * as Path from "path";
 import {
@@ -42,7 +42,8 @@ export type DocuNotionOptions = {
 
 let layoutStrategy: LayoutStrategy;
 let notionToMarkdown: NotionToMarkdown;
-let pages: Array<NotionPage>;
+let allTabsPages= new Array<NotionPage>();
+let tabsPages: Array<NotionPage>;
 let counts = {
   output_normally: 0,
   skipped_because_empty: 0,
@@ -133,7 +134,7 @@ async function getTabs(
 
     // Start new tree for this tab
     layoutStrategy = new HierarchicalNamedLayoutStrategy();
-    pages = new Array<NotionPage>();
+    tabsPages = new Array<NotionPage>();
 
     // Create tab output folder
     // const subfolderPath = options.markdownOutputPath.replace(/\/+$/, "") + '/' + tabs.nameOrTitle;
@@ -147,20 +148,13 @@ async function getTabs(
       `Stage 1: walk children of tabs "${tabs.nameOrTitle}"`
     );
     await getPagesRecursively(options, "", options.rootPage, tabs.pageId, 0);
-    logDebug("getPagesRecursively", JSON.stringify(pages, null, 2));
-    info(`Found ${pages.length} pages`);
+    logDebug("getPagesRecursively", JSON.stringify(tabsPages, null, 2));
+    info(`Found ${tabsPages.length} pages`);
     endGroup();
     group(
-      `Stage 2: convert ${pages.length} Notion pages to markdown and save locally...`
+      `Stage 2: convert ${tabsPages.length} Notion pages to markdown and save locally...`
     );
-    await outputPages(options, config, pages);
-    endGroup();
-    group("Stage 3: clean up old files & images...");
-    // TODO: pageWasSeen func is LayoutStrategy is scanning entire root and deleting anything not seen (not part of the pages array)
-    //       It needs to be edited to only scan the tabs path or completely deleted, otherwise it delete all previously parsed tabs. 
-    //       Maybe same for OldImages.
-    // await layoutStrategy.cleanupOldFiles();
-    // await cleanupOldImages();
+    await outputPages(options, config, tabsPages, allTabsPages);
     endGroup();
   }
 
@@ -224,7 +218,8 @@ async function getPagesRecursively(
 
     // Forward Category's index.md and push it into the pages array
     currentPage.layoutContext = layoutContext;
-    pages.push(currentPage);
+    tabsPages.push(currentPage);
+    allTabsPages.push(currentPage);
 
     // Recursively process child pages and page links
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
@@ -237,7 +232,17 @@ async function getPagesRecursively(
       );
     }
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-      pages.push(
+      tabsPages.push(
+        await fromPageId(
+          layoutContext,
+          currentPage.pageId,
+          linkPageInfo.id,
+          linkPageInfo.order,
+          false,
+          true
+        )
+      );
+      allTabsPages.push(
         await fromPageId(
           layoutContext,
           currentPage.pageId,
@@ -274,7 +279,17 @@ async function getPagesRecursively(
     }
 
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-      pages.push(
+      tabsPages.push(
+        await fromPageId(
+          layoutContext,
+          currentPage.pageId,
+          linkPageInfo.id,
+          linkPageInfo.order,
+          false,
+          true
+        )
+      );
+      allTabsPages.push(
         await fromPageId(
           layoutContext,
           currentPage.pageId,
@@ -290,7 +305,8 @@ async function getPagesRecursively(
   // Case: A simple content page
   else if (pageInfo.hasContent) {
     warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
-    pages.push(currentPage);
+    tabsPages.push(currentPage);
+    allTabsPages.push(currentPage);
   }
   
   // Case: Empty pages and undefined ones
@@ -418,7 +434,7 @@ export function initNotionClient(notionToken: string): Client {
   return notionClient;
 }
 async function fromPageId(
-  context: string,
+  layoutContext: string,
   parentId: string,
   pageId: string,
   order: number,
@@ -427,7 +443,7 @@ async function fromPageId(
 ): Promise<NotionPage> {
   const metadata = await getPageMetadata(pageId);
   let currentPage = new NotionPage({
-    layoutContext: context,
+    layoutContext: layoutContext,
     parentId,
     pageId,
     order,
@@ -463,7 +479,8 @@ export function numberChildrenIfNumberedList(
 async function outputPages(
   options: DocuNotionOptions,
   config: IDocuNotionConfig,
-  pages: Array<NotionPage>
+  tabsPages: Array<NotionPage>,
+  allTabsPages: Array<NotionPage>
 ) {
   const context: IDocuNotionContext = {
     config: config,
@@ -475,13 +492,13 @@ async function outputPages(
     relativeFilePathToFolderContainingPage: "", // this changes with each page
     convertNotionLinkToLocalDocusaurusLink: (url: string) =>
       convertInternalUrl(context, url),
-    pages: pages,
+    tabsPages: tabsPages,
+    allTabsPages: allTabsPages,
     counts: counts, // review will this get copied or pointed to?
     imports: [],
 
   };
-  for (const page of pages) {
-    layoutStrategy.pageWasSeen(page);
+  for (const page of tabsPages) {
     const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
 
     // most plugins should not write to disk, but those handling image files need these paths
@@ -509,6 +526,6 @@ async function outputPages(
     }
   }
 
-  info(`Finished processing ${pages.length} pages`);
+  info(`Finished processing ${tabsPages.length} pages`);
   info(JSON.stringify(counts));
 }

@@ -13,7 +13,8 @@ import { numberChildrenIfNumberedList } from "../pull";
 export async function blocksToMarkdown(
   config: IDocuNotionConfig,
   blocks: NotionBlock[],
-  pages?: NotionPage[],
+  tabsPages?: NotionPage[],
+  allTabsPages?: NotionPage[],
   // Notes on children:
   //   - These children will apply to each block in blocks. (could enhance but not needed yet)
   //   - If you are passing in children, it is probably because your parent block has has_children=true.
@@ -28,10 +29,6 @@ export async function blocksToMarkdown(
     notionClient,
   });
 
-  // if (pages && pages.length) {
-  //   console.log(pages[0]);
-  //   console.log(pages[0].matchesLinkId);
-  // }
   const docunotionContext: IDocuNotionContext = {
     config: config,
     notionToMarkdown: notionToMD,
@@ -61,7 +58,8 @@ export async function blocksToMarkdown(
       imgPrefixInMarkdown: "",
       statusTag: "",
     },
-    pages: pages ?? [],
+    tabsPages: tabsPages ?? [],
+    allTabsPages: allTabsPages ?? [],
     counts: {
       output_normally: 0,
       skipped_because_empty: 0,
@@ -89,9 +87,13 @@ export async function blocksToMarkdown(
     // },
   };
 
-  if (pages && pages.length) {
-    console.log(pages[0].matchesLinkId);
-    console.log(docunotionContext.pages[0].matchesLinkId);
+  if (tabsPages && tabsPages.length) {
+    console.log(tabsPages[0].matchesLinkId);
+    console.log(docunotionContext.tabsPages[0].matchesLinkId);
+  }
+  if (allTabsPages && allTabsPages.length) {
+    console.log(allTabsPages[0].matchesLinkId);
+    console.log(docunotionContext.tabsPages[0].matchesLinkId);
   }
   const r = await getMarkdownFromNotionBlocks(
     docunotionContext,
@@ -278,6 +280,7 @@ export async function oneBlockToMarkdown(
   return await blocksToMarkdown(
     config,
     [fullBlock as NotionBlock],
-    targetPage ? [dummyPage1, targetPage, dummyPage2] : undefined
+    targetPage ? [dummyPage1, targetPage] : undefined,
+    targetPage ? [dummyPage1, targetPage, dummyPage2] : undefined,
   );
 }
