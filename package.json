@@ -1,6 +1,5 @@
 {
   "scripts": {
-    "sync": "rsync -av --delete docs/ ../docs.kira.network/docs/",
     "test": "vitest",
     "build": "npm run test -- --run && tsc && cp ./src/css/*.css dist/ && echo Build successful",
     "build-only": "tsc && cp ./src/css/*.css dist/",

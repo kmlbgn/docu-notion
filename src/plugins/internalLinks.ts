@@ -95,14 +95,7 @@ function convertLinkHref(
  page: NotionPage,
  url: string
 ): string {
- let convertedLink: string;
- // If the link is from the current tab, use the direct link path to the page
- if (tab == context.currentTab) {
-   convertedLink = context.layoutStrategy.getLinkPathForPage(page);
- } else {
-   // If the link is from a different tab, prepend '/' and the tab name to the link path
-   convertedLink = "/" + tab + context.layoutStrategy.getLinkPathForPage(page);
- }
+ let convertedLink = "/" + tab + context.layoutStrategy.getLinkPathForPage(page);
 
  // Extract the fragment identifier from the URL, if it exists
  const { fragmentId } = parseLinkId(url);
