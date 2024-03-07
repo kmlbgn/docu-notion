@@ -42,8 +42,8 @@ export type DocuNotionOptions = {
 
 let layoutStrategy: LayoutStrategy;
 let notionToMarkdown: NotionToMarkdown;
-let allTabsPages= new Array<NotionPage>();
-let tabsPages: Array<NotionPage>;
+let allTabsPages: Record<string, NotionPage[]> = {};
+let currentTabPages: Array<NotionPage>;
 let counts = {
   output_normally: 0,
   skipped_because_empty: 0,
@@ -90,7 +90,18 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
 
   // Create a base folder using markdownOutputPath (default "tabs")
   await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, ""), { recursive: true });
+  
+  //TODO group stage 1 should be extracted from getTabs to here
   await getTabs(options, "", "root", options.rootPage);
+
+  group(
+    `Stage 2: Convert ${currentTabPages.length} Notion pages to markdown and save locally...`
+  );
+  // Load config
+  const config = await loadConfigAsync();
+
+  await outputPages(options, config, allTabsPages);
+  endGroup();
 }
 
 async function getTabs(
@@ -99,7 +110,7 @@ async function getTabs(
   parentId: string,
   pageId: string,
 ) {
-  // Get root page metadata
+  // Create root page to fetch metadata
   const rootPage = await fromPageId(
     "",
     parentId,
@@ -109,10 +120,7 @@ async function getTabs(
     false
   );
 
-  // Load config
-  const config = await loadConfigAsync();
-
-  // Get tabs list
+  // Get all tabs (sub-pages of root page) 
   const r = await getBlockChildren(rootPage.pageId);
   const pageInfo = await rootPage.getContentInfo(r);
 
@@ -121,7 +129,7 @@ async function getTabs(
   // Recursively process each tabs
   for (const tabPageInfo of pageInfo.childPageIdsAndOrder) {
     // Get tabs page metadata
-    const tabs = await fromPageId(
+    const currentTab = await fromPageId(
       incomingContext,
       parentId,
       tabPageInfo.id,
@@ -130,31 +138,24 @@ async function getTabs(
       false
     );
 
-    warning(`Scan: Found tab "${tabs.nameOrTitle}". Processing tab's pages tree...`);
+    warning(`Scan: Found tab "${currentTab.nameOrTitle}". Processing tab's pages tree...`);
 
-    // Start new tree for this tab
+    // Initalize a structure for this tab
+    // TODO this probably dont need to be global
     layoutStrategy = new HierarchicalNamedLayoutStrategy();
-    tabsPages = new Array<NotionPage>();
-
-    // Create tab output folder
-    // const subfolderPath = options.markdownOutputPath.replace(/\/+$/, "") + '/' + tabs.nameOrTitle;
-    // await fs.mkdir(subfolderPath, { recursive: true });
+    currentTabPages = new Array<NotionPage>();
     
     //TODO: this is static dont need to be looped 
     layoutStrategy.setRootDirectoryForMarkdown(options.markdownOutputPath);
 
     // Process tab's pages
     group(
-      `Stage 1: walk children of tabs "${tabs.nameOrTitle}"`
+      `Stage 1: walk children of tabs "${currentTab.nameOrTitle}"`
     );
-    await getPagesRecursively(options, "", options.rootPage, tabs.pageId, 0);
-    logDebug("getPagesRecursively", JSON.stringify(tabsPages, null, 2));
-    info(`Found ${tabsPages.length} pages`);
-    endGroup();
-    group(
-      `Stage 2: convert ${tabsPages.length} Notion pages to markdown and save locally...`
-    );
-    await outputPages(options, config, tabsPages, allTabsPages);
+    await getTabsPagesRecursively(options, "", options.rootPage, currentTab.pageId, 0);
+    logDebug("getPagesRecursively", JSON.stringify(currentTabPages, null, 2));
+    info(`Found ${currentTabPages.length} pages`);
+    allTabsPages[currentTab.nameOrTitle.toLowerCase()] = currentTabPages;
     endGroup();
   }
 
@@ -175,7 +176,7 @@ async function getTabs(
 // getPagesRecursively navigates the root page and iterates over each page within it,
 // treating each as an independent tree structure. It constructs a folder structure of pages for sidebar organization,
 // preserving the hierarchical order set in Notion.
-async function getPagesRecursively(
+async function getTabsPagesRecursively(
   options: DocuNotionOptions,
   incomingContext: string,
   parentId: string,
@@ -218,12 +219,11 @@ async function getPagesRecursively(
 
     // Forward Category's index.md and push it into the pages array
     currentPage.layoutContext = layoutContext;
-    tabsPages.push(currentPage);
-    allTabsPages.push(currentPage);
+    currentTabPages.push(currentPage);
 
     // Recursively process child pages and page links
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
-      await getPagesRecursively(
+      await getTabsPagesRecursively(
         options,
         layoutContext,
         currentPage.pageId,
@@ -232,17 +232,7 @@ async function getPagesRecursively(
       );
     }
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-      tabsPages.push(
-        await fromPageId(
-          layoutContext,
-          currentPage.pageId,
-          linkPageInfo.id,
-          linkPageInfo.order,
-          false,
-          true
-        )
-      );
-      allTabsPages.push(
+      currentTabPages.push(
         await fromPageId(
           layoutContext,
           currentPage.pageId,
@@ -269,9 +259,10 @@ async function getPagesRecursively(
     );
 
     for (const childPageInfo of pageInfo.childPageIdsAndOrder) {
-      await getPagesRecursively(
+      await getTabsPagesRecursively(
         options,
         layoutContext,
+
         currentPage.pageId,
         childPageInfo.id,
         childPageInfo.order,
@@ -279,17 +270,7 @@ async function getPagesRecursively(
     }
 
     for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-      tabsPages.push(
-        await fromPageId(
-          layoutContext,
-          currentPage.pageId,
-          linkPageInfo.id,
-          linkPageInfo.order,
-          false,
-          true
-        )
-      );
-      allTabsPages.push(
+      currentTabPages.push(
         await fromPageId(
           layoutContext,
           currentPage.pageId,
@@ -305,8 +286,7 @@ async function getPagesRecursively(
   // Case: A simple content page
   else if (pageInfo.hasContent) {
     warning(`Scan: Page "${currentPage.nameOrTitle}" is a simple content page.`);
-    tabsPages.push(currentPage);
-    allTabsPages.push(currentPage);
+    currentTabPages.push(currentPage);
   }
   
   // Case: Empty pages and undefined ones
@@ -479,53 +459,44 @@ export function numberChildrenIfNumberedList(
 async function outputPages(
   options: DocuNotionOptions,
   config: IDocuNotionConfig,
-  tabsPages: Array<NotionPage>,
-  allTabsPages: Array<NotionPage>
+  allTabsPages: Record<string, NotionPage[]>
 ) {
   const context: IDocuNotionContext = {
-    config: config,
-    layoutStrategy: layoutStrategy,
-    options: options,
-    getBlockChildren: getBlockChildren,
-    notionToMarkdown: notionToMarkdown,
-    directoryContainingMarkdown: "", // this changes with each page
-    relativeFilePathToFolderContainingPage: "", // this changes with each page
-    convertNotionLinkToLocalDocusaurusLink: (url: string) =>
-      convertInternalUrl(context, url),
-    tabsPages: tabsPages,
-    allTabsPages: allTabsPages,
-    counts: counts, // review will this get copied or pointed to?
+    config,
+    layoutStrategy,
+    options,
+    getBlockChildren,
+    notionToMarkdown,
+    directoryContainingMarkdown: "", 
+    relativeFilePathToFolderContainingPage: "", 
+    convertNotionLinkToLocalDocusaurusLink: (url: string) => convertInternalUrl(context, url),
+    allTabsPages,
+    currentTab: "",
+    counts, 
     imports: [],
-
   };
-  for (const page of tabsPages) {
-    const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
 
-    // most plugins should not write to disk, but those handling image files need these paths
-    context.directoryContainingMarkdown = Path.dirname(mdPath);
-    // TODO: This needs clarifying: getLinkPathForPage() is about urls, but
-    // downstream images.ts is using it as a file system path
-    context.relativeFilePathToFolderContainingPage = Path.dirname(
-      layoutStrategy.getLinkPathForPage(page)
-    );
+  for (const tab in allTabsPages) {
+    const tabPages = allTabsPages[tab];
+    context.currentTab = tab;
+    context.counts.skipped_because_status = 0;
 
-    if (
-      page.type === PageType.DatabasePage &&
-      context.options.statusTag != "*" &&
-      page.status !== context.options.statusTag
-    ) {
-      verbose(
-        `Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`
-      );
-      // TODO: count need to be reset for each loop otherwise moot
-      ++context.counts.skipped_because_status;
-    } else {
-      //TODO: config no longer needs to be passed now that it is part of context
-      const markdown = await getMarkdownForPage(config, context, page);
-      writePage(page, markdown);
+    for (const page of tabPages) {
+      const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
+      context.directoryContainingMarkdown = Path.dirname(mdPath);
+      context.relativeFilePathToFolderContainingPage = Path.dirname(layoutStrategy.getLinkPathForPage(page));
+
+      if (page.type === PageType.DatabasePage && context.options.statusTag != "*" && page.status !== context.options.statusTag) {
+        verbose(`Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`);
+        ++context.counts.skipped_because_status;
+      } else {
+        const markdown = await getMarkdownForPage(context, page);
+        writePage(page, markdown);
+      }
     }
-  }
 
-  info(`Finished processing ${tabsPages.length} pages`);
-  info(JSON.stringify(counts));
+    info(`Finished processing ${tab}`);
+    // TODO counts needs refactoring (mixing up total per tab and total all tabs) 
+    info(JSON.stringify(counts.skipped_because_status));
+  }
 }

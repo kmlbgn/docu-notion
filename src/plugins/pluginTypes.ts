@@ -74,8 +74,8 @@ export type IDocuNotionContext = {
   notionToMarkdown: NotionToMarkdown;
   directoryContainingMarkdown: string;
   relativeFilePathToFolderContainingPage: string;
-  tabsPages: NotionPage[];
-  allTabsPages: NotionPage[];
+  allTabsPages: Record<string, NotionPage[]>;
+  currentTab: string;
   convertNotionLinkToLocalDocusaurusLink: (url: string) => string | undefined;
   counts: ICounts;
 
