@@ -19,7 +19,7 @@ export const standardExternalLinkConversion: IPlugin = {
       if (label === "bookmark") {
         const replacement = `[${url}](${url})`;
         warning(
-          `Link parsing: [ExternalLinkPlugin] Found Notion "Bookmark" link. In Notion this would show as an embed. The best docu-notion can do at the moment is replace "Bookmark" with the actual URL: ${replacement}`
+          `Link parsing: [ExternalLinkPlugin] Found Notion "Bookmark" link. In Notion this would show as an embed. The best Nocusaurus can do at the moment is replace "Bookmark" with the actual URL: ${replacement}`
         );
         return replacement;
       }

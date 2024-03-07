@@ -77,7 +77,7 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
     });
   } catch (e: any) {
     error(
-      `docu-notion could not retrieve the root page from Notion. \r\na) Check that the root page id really is "${
+      `Nocusaurus could not retrieve the root page from Notion. \r\na) Check that the root page id really is "${
         options.rootPage
       }".\r\nb) Check that your Notion API token (the "Integration Secret") is correct. It starts with "${
         optionsForLogging.notionToken
@@ -398,7 +398,7 @@ async function getBlockChildren(id: string): Promise<NotionBlock[]> {
 
   if (overallResult?.results?.some(b => !isFullBlock(b))) {
     error(
-      `The Notion API returned some blocks that were not full blocks. docu-notion does not handle this yet. Please report it.`
+      `The Notion API returned some blocks that were not full blocks. Nocusaurus does not handle this yet. Please report it.`
     );
     exit(1);
   }

@@ -28,7 +28,7 @@ export const standardVideoTransformer: IPlugin = {
             warning(
               `[standardVideoTransformer] Found Notion "video" block with type ${JSON.stringify(
                 (video as any).type
-              )}. The best docu-notion can do for now is ignore it.`
+              )}. The best Nocusaurus can do for now is ignore it.`
             );
             return "";
             break;

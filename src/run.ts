@@ -8,7 +8,7 @@ import path from "path";
 export async function run(): Promise<void> {
   const pkg = require("../package.json");
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  console.log(`docu-notion version ${pkg.version}`);
+  console.log(`Nocusaurus version ${pkg.version}`);
 
   program.name("docu-notion").description("");
   program.usage("-n <token> -r <root> [options]");
@@ -23,12 +23,12 @@ export async function run(): Promise<void> {
     )
     .option(
       "-m, --markdown-output-path  <string>",
-      "Root of the hierarchy for md files. WARNING: docu-notion will delete files from this directory. Note also that if it finds localized images, it will create an i18n/ directory as a sibling.",
+      "Root of the hierarchy for md files. WARNING: Nocusaurus will delete files from this directory. Note also that if it finds localized images, it will create an i18n/ directory as a sibling.",
       "./tabs"
     )
     .option(
       "--css-output-directory  <string>",
-      "docu-notion has a docu-notion-styles.css file that you will need to use to get things like notion columns to look right. This option specifies where that file should be copied to.",
+      "Nocusaurus has a docu-notion-styles.css file that you will need to use to get things like notion columns to look right. This option specifies where that file should be copied to.",
       "./css"
     )
     .option(
@@ -74,10 +74,10 @@ export async function run(): Promise<void> {
   let pathToCss = "";
   try {
     pathToCss = require.resolve(
-      "docu-notion-kira/dist/docu-notion-styles.css"
+      "nocusaurus/dist/docu-notion-styles.css"
     );
   } catch (e) {
-    // when testing from the docu-notion project itself:
+    // when testing from the Nocusaurus project itself:
     pathToCss = "./src/css/docu-notion-styles.css";
   }
   // make any missing parts of the path exist
