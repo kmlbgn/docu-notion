@@ -10,7 +10,6 @@ import { NotionBlock } from "./types";
 import { executeWithRateLimitAndRetries } from "./pull";
 
 export async function getMarkdownForPage(
-  config: IDocuNotionConfig,
   context: IDocuNotionContext,
   page: NotionPage
 ): Promise<string> {
@@ -55,7 +54,7 @@ export async function getMarkdownForPage(
       return true;
   });
 
-  const body = await getMarkdownFromNotionBlocks(context, config, filteredBlocks);
+  const body = await getMarkdownFromNotionBlocks(context, context.config, filteredBlocks);
   const frontmatter = getFrontMatter(page); // todo should be a plugin
   return `${frontmatter}\n${body}`;
 }
@@ -232,7 +231,7 @@ function doLinkFixes(
     const originalLinkMarkdown = match[0];
 
     verbose(
-      `Link parsing: Checking "${originalLinkMarkdown}"`
+      `Checking "${originalLinkMarkdown}"`
     );
 
     // We only use the first plugin that matches and makes a change to the link.
@@ -241,7 +240,7 @@ function doLinkFixes(
     config.plugins.some(plugin => {
       if (!plugin.linkModifier) return false;
       if (plugin.linkModifier.match.exec(originalLinkMarkdown) === null) {
-        verbose(`Link parsing: [${plugin.name}] Did not match this url`);
+        verbose(`[${plugin.name}] Did not match this url`);
         return false;
       }
       const newMarkdown = plugin.linkModifier.convert(
@@ -252,11 +251,11 @@ function doLinkFixes(
       if (newMarkdown !== originalLinkMarkdown) {
         markdown = markdown.replace(originalLinkMarkdown, newMarkdown);
         verbose(
-          `Link parsing: [${plugin.name}] Converted "${originalLinkMarkdown}" to "${newMarkdown}"`
+          `[${plugin.name}] Converted "${originalLinkMarkdown}" to "${newMarkdown}"`
         );
         return true; // the first plugin that matches and does something wins
       } else {
-        verbose(`Link parsing: [${plugin.name}] URL unchanged`);
+        verbose(`[${plugin.name}] URL unchanged`);
         return false;
       }
     });

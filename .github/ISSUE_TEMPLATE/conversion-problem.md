@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 ** Reproduction Steps **
 
-URL of a source Notion page that, when docu-notion accesses or converts it, shows the problem:
+URL of a source Notion page that, when Nocusaurus accesses or converts it, shows the problem:
 
 At least one of these:
 1) URL of a docusuarus site showing the resulting page

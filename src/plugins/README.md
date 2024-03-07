@@ -1,6 +1,6 @@
 # Plugins (Advanced & Experimental)
 
-If your project needs some processing that docu-notion doesn't already provide, you can provide a plugin that does it. If there is call for it, we'll add more documentation in the future. But for now, here's the steps:
+If your project needs some processing that Nocusaurus doesn't already provide, you can provide a plugin that does it. If there is call for it, we'll add more documentation in the future. But for now, here's the steps:
 
 1. Add a `docu-notion.config.ts` to the root level of your project directory.
 1. Add something like this:
