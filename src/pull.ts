@@ -89,7 +89,7 @@ export async function notionPull(options: DocuNotionOptions): Promise<void> {
   }
 
   // Create a base folder using markdownOutputPath (default "tabs")
-  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, ""), { recursive: true });
+  await fs.mkdir(options.markdownOutputPath.replace(/\/+$/, "").toLowerCase(), { recursive: true });
   
   //TODO group stage 1 should be extracted from getTabs to here
   await getTabs(options, "", "root", options.rootPage);
@@ -303,7 +303,7 @@ async function getTabsPagesRecursively(
 function writePage(page: NotionPage, finalMarkdown: string) {
   const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
   verbose(`writing ${mdPath}`);
-  fs.writeFileSync(mdPath, finalMarkdown, {});
+  fs.writeFileSync(mdPath.toLowerCase(), finalMarkdown, {});
   ++counts.output_normally;
 }
 

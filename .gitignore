@@ -4,5 +4,7 @@ sample_img/
 i18n/
 node_modules/
 version.json
-docs/
+tabs/
+css/
+static/
 *.orig
