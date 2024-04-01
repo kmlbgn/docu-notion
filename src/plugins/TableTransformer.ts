@@ -1,7 +1,8 @@
 import { NotionToMarkdown } from "notion-to-md";
+import { table } from "notion-to-md/build/utils/md";
 import { ListBlockChildrenResponseResult } from "notion-to-md/build/types";
 import markdownTable from "markdown-table";
-import { IGetBlockChildrenFn, IDocuNotionContext, IPlugin } from "./pluginTypes";
+import { IGetBlockChildrenFn, IPlugin } from "./pluginTypes";
 import { NotionBlock } from "../types";
 
 // This is mostly a copy of the table handler from notion-to-md. The change is to handle newlines in the
@@ -15,7 +16,6 @@ export async function tableTransformer(
   const tableArr: string[][] = [];
   if (has_children) {
     const tableRows = await getBlockChildren(id);
-    // console.log(">>", tableRows);
     const rowsPromise = tableRows?.map(async row => {
       const { type } = row as any;
       const cells = (row as any)[type]["cells"];
@@ -53,7 +53,8 @@ export async function tableTransformer(
     });
     await Promise.all(rowsPromise || []);
   }
-  return markdownTable(tableArr);
+  return table(tableArr);
+  // return markdownTable(tableArr);
 }
 
 export const standardTableTransformer: IPlugin = {

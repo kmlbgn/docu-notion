@@ -26,17 +26,4 @@ export abstract class LayoutStrategy {
     // the url we return starts with a "/", meaning it is relative to the root of the markdown root (e.g. /docs root in Docusaurus)
     return ("/" + page.slug).replaceAll("//", "/");
   }
-
-  protected getListOfExistingFiles(dir: string): string[] {
-    return fs.readdirSync(dir).flatMap(item => {
-      const path = `${dir}/${item}`;
-      if (fs.statSync(path).isDirectory()) {
-        return this.getListOfExistingFiles(path);
-      }
-      if (path.endsWith(".mdx")) {
-        // we could just notice all files, and maybe that's better. But then we lose an debugging files like .json of the raw notion, on the second run.
-        return [path];
-      } else return [];
-    });
-  }
 }
