@@ -195,8 +195,8 @@ function writeImageIfNew(path: string, buffer: Buffer) {
   if (fs.pathExistsSync(path)) {
     verbose("Replacing image " + path);
   } else {
-    verbose("Adding image " + path);
-    fs.mkdirsSync(Path.dirname(path));
+    verbose("Adding image " + path.toLowerCase());
+    fs.mkdirsSync(Path.dirname(path.toLowerCase()));
   }
   fs.createWriteStream(path).write(buffer); // async but we're not waiting
 }

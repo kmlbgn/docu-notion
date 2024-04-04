@@ -301,9 +301,9 @@ async function getTabsPagesRecursively(
 }
 
 function writePage(page: NotionPage, finalMarkdown: string) {
-  const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
+  const mdPath = layoutStrategy.getPathForPage(page, ".mdx").toLowerCase();
   verbose(`writing ${mdPath}`);
-  fs.writeFileSync(mdPath.toLowerCase(), finalMarkdown, {});
+  fs.writeFileSync(mdPath, finalMarkdown, {});
   ++counts.output_normally;
 }
 

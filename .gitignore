@@ -8,3 +8,4 @@ tabs/
 css/
 static/
 *.orig
+*.bak
