@@ -16,7 +16,7 @@ export class HierarchicalNamedLayoutStrategy extends LayoutStrategy {
     const path = context + "/" + sanitize(levelLabel).replaceAll(" ", "-");
 
     const newPath = dirRoot + "/" + path;
-    fs.mkdirSync(newPath, { recursive: true });
+    fs.mkdirSync(newPath.toLowerCase(), { recursive: true });
     this.addCategoryMetadata(newPath, order, levelLabel);
     return path;
   }
