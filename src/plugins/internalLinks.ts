@@ -25,7 +25,7 @@ export function convertInternalUrl(context: IDocuNotionContext, url: string): st
   }
 
   if (targetPage.page && targetPage.tab) {
-      return convertLinkHref(context, targetPage.tab, targetPage.page, url); 
+      return convertLinkHref(context, targetPage, url); 
   } else {
     warning(`Could not find the target of this link. Links to outline sections are not supported. ${url}.`);
     return `${id}[broken link]`;
@@ -69,7 +69,7 @@ function convertInternalLink(context: IDocuNotionContext, markdownLink: string):
 
   if (targetPage.page && targetPage.tab) {
     const label = convertLinkLabel(targetPage.page, labelFromNotion);
-    const url = convertLinkHref(context, targetPage.tab, targetPage.page, hrefFromNotion);
+    const url = convertLinkHref(context, targetPage, hrefFromNotion);
     return `[${label}](${url})`;
   } else {
     warning(`Could not find a local target for ${hrefFromNotion}.`);
@@ -90,21 +90,27 @@ function convertLinkLabel(targetPage: NotionPage, text: string): string {
 * Note: The official Notion API does not include links to headings unless they are part of an inline link.
 */
 function convertLinkHref(
- context: IDocuNotionContext,
- tab: string, 
- page: NotionPage,
- url: string
+  context: IDocuNotionContext,
+  targetPage: { page?: NotionPage; tab?: string },
+  url: string
 ): string {
- let convertedLink = "/" + tab + context.layoutStrategy.getLinkPathForPage(page);
-
- // Extract the fragment identifier from the URL, if it exists
- const { fragmentId } = parseLinkId(url);
- if (fragmentId !== "") {
-   verbose(`[InternalLinkPlugin] Extracted Fragment ID from ${url}: ${fragmentId}`);
- }
- convertedLink += fragmentId;
-
- return convertedLink;
+  if (!targetPage.page || !targetPage.tab) {
+    warning(`Could not find the target of this link. Links to outline sections are not supported. ${url}.`);
+    return `${url}[broken link]`;
+  }
+  else {
+    let convertedLink = context.layoutStrategy.getLinkPathForPage(targetPage);
+    verbose(`>>>>>>>> ${convertedLink}`);
+  
+    // Extract the fragment identifier from the URL, if it exists
+    const { fragmentId } = parseLinkId(url);
+    if (fragmentId !== "") {
+      verbose(`[InternalLinkPlugin] Extracted Fragment ID from ${url}: ${fragmentId}`);
+    }
+    convertedLink += fragmentId;
+  
+    return convertedLink;
+  }
 }
 
 
