@@ -3,7 +3,6 @@
 import { GetPageResponse } from "@notionhq/client/build/src/api-endpoints";
 import { parseLinkId } from "./plugins/internalLinks";
 import { ListBlockChildrenResponseResults } from "notion-to-md/build/types";
-import { verbose } from "./log";
 
 
 // Notion has 2 kinds of pages: a normal one which is just content, and what I'm calling a "database page", which has whatever properties you put on it.
