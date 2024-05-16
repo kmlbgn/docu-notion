@@ -108,11 +108,11 @@ export class NotionPage {
 
   // In Notion, pages from the Outline have "title"'s.
   private get title(): string {
-    return this.getPlainTextProperty("title", "title missing");
+    return this.getPlainTextProperty("title", "title missing").trim().replace(/\s{2,}/g, ' ');
   }
   // In Notion, pages from the Database have "Name"s.
   private get name(): string {
-    return this.getPlainTextProperty("Name", "name missing");
+    return this.getPlainTextProperty("Name", "name missing").trim().replace(/\s{2,}/g, ' ');
   }
 
   private explicitSlug(): string | undefined {
@@ -132,7 +132,6 @@ export class NotionPage {
               .replace(/^\//, "")
               .replaceAll(" ", "-")
               .replaceAll(/[^a-z0-9-]/g, "") // remove special characters and punctuation
-              .replaceAll("--", "-") // remove consecutive dashes
           )
         );
     }

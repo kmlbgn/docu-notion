@@ -471,7 +471,7 @@ async function outputPages(
     for (const page of tabPages) {
       const mdPath = layoutStrategy.getPathForPage(page, ".mdx");
       context.directoryContainingMarkdown = Path.dirname(mdPath);
-      context.relativeFilePathToFolderContainingPage = Path.dirname(layoutStrategy.getLinkPathForPage(page));
+      context.relativeFilePathToFolderContainingPage = Path.dirname(layoutStrategy.getPageSlug(page));
 
       if (page.type === PageType.DatabasePage && context.options.statusTag != "*" && page.status !== context.options.statusTag) {
         verbose(`Skipping page because status is not '${context.options.statusTag}': ${page.nameOrTitle}`);
