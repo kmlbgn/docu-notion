@@ -115,33 +115,29 @@ export class NotionPage {
   }
 
   private explicitSlug(): string | undefined {
-    const explicitSlug = this.getPlainTextProperty("Slug", "");
-    if (explicitSlug) {
-      if (explicitSlug === "/") return explicitSlug;
-      // the root page
+    let slug = this.getPlainTextProperty("Slug", "");
+  
+    if (!slug) {
+      slug = this.nameOrTitle;
+    }
+  
+    if (slug) {
+      if (slug === "/") return slug; // the root page
       else
         return (
           "/" +
           encodeURIComponent(
-            explicitSlug
+            slug
+              .toLowerCase()
               .replace(/^\//, "")
-              // If for some reason someone types in a slug with special characters,
-              //we really don't want to see ugly entities in the URL, so first
-              // we replace a bunch of likely suspects with dashes. This will not
-              // adequately handle the case where there is one pag with slug:"foo-bar"
-              // and another with "foo?bar". Both will come out "foo-bar"
               .replaceAll(" ", "-")
-              .replaceAll("?", "-")
-              .replaceAll("/", "-")
-              .replaceAll("#", "-")
-              .replaceAll("&", "-")
-              .replaceAll("%", "-")
-              // remove consecutive dashes
-              .replaceAll("--", "-")
+              .replaceAll(/[^a-z0-9-]/g, "") // remove special characters and punctuation
+              .replaceAll("--", "-") // remove consecutive dashes
           )
         );
-      return undefined; // this page has no slug property
     }
+  
+    return undefined; // this page has no slug property
   }
 
   public get slug(): string {
