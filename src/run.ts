@@ -87,33 +87,6 @@ export async function run(): Promise<void> {
     path.join(program.opts().cssOutputDirectory, "docu-notion-styles.css")
   );
 
-  // TODO: delete if confirmed useless 
-  // async function moveTmpContents() {
-  //   const destTmpPath = "src/pages";
-  //   const srcTmpPath = path.join(options.markdownOutputPath.replace(/\/+$/, "")+ '/tmp');
-  //   fs.ensureDirSync(destTmpPath);
-  
-  //   const tmpFiles = fs.readdirSync(srcTmpPath);
-  //   for (const file of tmpFiles) {
-  //     const destFilePath = path.join(destTmpPath, file);
-  //     const srcFilePath = path.join(srcTmpPath, file);
-  
-  //     if (fs.existsSync(destFilePath)) {
-  //       // Prompt user for overwriting
-  //       const overwrite = await promptUserForOverwrite(file, options.yes); 
-  //       if (!overwrite) {
-  //       console.log(`Skipping overwrite of '${file}'`);
-  //       continue;
-  //       } else {
-  //         console.log(`Overwriting '${file}'`);
-  //       }
-  //     }
-  
-  //     fs.moveSync(srcFilePath, destFilePath, { overwrite: true });
-  //   }
-  //   // After moving all files, delete the tmp folder
-  //   fs.removeSync(srcTmpPath);
-  // }
 
   // Pull tabs and their respective page tree structure
   await notionPull(program.opts());

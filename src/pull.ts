@@ -158,19 +158,6 @@ async function getTabs(
     allTabsPages[currentTab.nameOrTitle.toLowerCase()] = currentTabPages;
     endGroup();
   }
-
-  // TODO: links to tabs.
-  // for (const linkPageInfo of pageInfo.linksPageIdsAndOrder) {
-  //   // Get tabs page metadata
-  //   const Tabs = await fromPageId(
-  //     options,
-  //     incomingContext,
-  //     parentId,
-  //     pageId,
-  //     pageOrder,
-  //     true,
-  //     false
-  //   );
 }
 
 // getPagesRecursively navigates the root page and iterates over each page within it,
