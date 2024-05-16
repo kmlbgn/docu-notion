@@ -3,6 +3,8 @@
 import { GetPageResponse } from "@notionhq/client/build/src/api-endpoints";
 import { parseLinkId } from "./plugins/internalLinks";
 import { ListBlockChildrenResponseResults } from "notion-to-md/build/types";
+import { verbose } from "./log";
+
 
 // Notion has 2 kinds of pages: a normal one which is just content, and what I'm calling a "database page", which has whatever properties you put on it.
 // Nocusaurus supports the later via links from outline pages. That is, you put the database pages in a database, then separately, in the outline, you
@@ -120,12 +122,11 @@ export class NotionPage {
     if (!slug) {
       slug = this.nameOrTitle;
     }
-  
+
     if (slug) {
       if (slug === "/") return slug; // the root page
       else
         return (
-          "/" +
           encodeURIComponent(
             slug
               .toLowerCase()
